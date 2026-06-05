@@ -1,0 +1,179 @@
+generator client {
+  provider = "prisma-client-js"
+  engineType = "binary"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Organization {
+  id           Int              @id @default(autoincrement())
+  name         String
+  slug         String           @unique
+  memberships  TenantMembership[]
+  courses      Course[]
+  modules      Module[]
+  quizzes      Quiz[]
+  questions    Question[]
+  enrollments  Enrollment[]
+  quizAttempts QuizAttempt[]
+  licenses     License[]
+  featureFlags FeatureFlag[]
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+}
+
+model User {
+  id            Int                @id @default(autoincrement())
+  email         String             @unique
+  name          String?
+  password      String
+  platformRole  PlatformRole       @default(USER)
+  memberships   TenantMembership[]
+  courses       Course[]           @relation("InstructorCourses")
+  enrollments   Enrollment[]
+  quizAttempts  QuizAttempt[]
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+}
+
+model TenantMembership {
+  id         Int        @id @default(autoincrement())
+  userId     Int
+  tenantId   Int
+  role       TenantRole @default(STUDENT)
+  isDefault  Boolean    @default(false)
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+  user       User       @relation(fields: [userId], references: [id])
+  tenant     Organization @relation(fields: [tenantId], references: [id])
+
+  @@unique([userId, tenantId])
+}
+
+enum PlatformRole {
+  USER
+  ADMIN
+}
+
+enum TenantRole {
+  STUDENT
+  INSTRUCTOR
+  ADMIN
+  OWNER
+}
+
+enum LicenseStatus {
+  TRIAL
+  ACTIVE
+  SUSPENDED
+  EXPIRED
+}
+
+model Course {
+  id           Int          @id @default(autoincrement())
+  tenantId     Int
+  title        String
+  description  String?
+  instructorId Int
+  tenant       Organization @relation(fields: [tenantId], references: [id])
+  instructor   User         @relation("InstructorCourses", fields: [instructorId], references: [id])
+  modules      Module[]
+  enrollments  Enrollment[]
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+}
+
+model Module {
+  id          Int          @id @default(autoincrement())
+  tenantId    Int
+  title       String
+  content     String?      // Text content
+  videoUrl    String?      // Path to local video or remote
+  courseId    Int
+  tenant      Organization @relation(fields: [tenantId], references: [id])
+  course      Course       @relation(fields: [courseId], references: [id])
+  quizzes     Quiz[]
+  order       Int          @default(0)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+model Quiz {
+  id        Int          @id @default(autoincrement())
+  tenantId  Int
+  title     String
+  moduleId  Int
+  tenant    Organization @relation(fields: [tenantId], references: [id])
+  module    Module       @relation(fields: [moduleId], references: [id])
+  questions Question[]
+  attempts  QuizAttempt[]
+  createdAt DateTime     @default(now())
+}
+
+model Question {
+  id            Int          @id @default(autoincrement())
+  tenantId      Int
+  text          String
+  options       String[] // Array of strings for choices
+  correctAnswer Int      // Index of correct option
+  quizId        Int
+  tenant        Organization @relation(fields: [tenantId], references: [id])
+  quiz          Quiz         @relation(fields: [quizId], references: [id])
+}
+
+model QuizAttempt {
+  id        Int          @id @default(autoincrement())
+  tenantId  Int
+  userId    Int
+  user      User         @relation(fields: [userId], references: [id])
+  quizId    Int
+  tenant    Organization @relation(fields: [tenantId], references: [id])
+  quiz      Quiz         @relation(fields: [quizId], references: [id])
+  score     Int          // Number of correct answers
+  total     Int          // Total number of questions
+  createdAt DateTime     @default(now())
+}
+
+model Enrollment {
+  id        Int          @id @default(autoincrement())
+  tenantId  Int
+  userId    Int
+  user      User         @relation(fields: [userId], references: [id])
+  courseId  Int
+  tenant    Organization @relation(fields: [tenantId], references: [id])
+  course    Course       @relation(fields: [courseId], references: [id])
+  progress  Float        @default(0.0) // 0 to 100
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  @@unique([tenantId, userId, courseId])
+}
+
+model License {
+  id            Int           @id @default(autoincrement())
+  tenantId      Int           @unique
+  status        LicenseStatus @default(TRIAL)
+  plan          String        @default("starter")
+  seats         Int?
+  expiresAt     DateTime?
+  issuedTo      String?
+  metadata      Json?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  tenant        Organization  @relation(fields: [tenantId], references: [id])
+}
+
+model FeatureFlag {
+  id         Int          @id @default(autoincrement())
+  tenantId   Int
+  key        String
+  enabled    Boolean      @default(false)
+  value      Json?
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+  tenant     Organization @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, key])
+}

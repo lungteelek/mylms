@@ -1,0 +1,32 @@
+declare const _default: (() => {
+    port: number;
+    jwtSecret: string;
+    jwtExpiresIn: string;
+    defaultTenantSlug: string;
+    smtpHost: string;
+    smtpPort: number;
+    smtpSecure: boolean;
+    smtpUser: string;
+    smtpPass: string;
+    smtpFrom: string;
+    firebaseProjectId: string;
+    firebaseServiceAccountJson: string;
+    lineChannelAccessToken: string;
+    telegramBotToken: string;
+}) & import("@nestjs/config").ConfigFactoryKeyHost<{
+    port: number;
+    jwtSecret: string;
+    jwtExpiresIn: string;
+    defaultTenantSlug: string;
+    smtpHost: string;
+    smtpPort: number;
+    smtpSecure: boolean;
+    smtpUser: string;
+    smtpPass: string;
+    smtpFrom: string;
+    firebaseProjectId: string;
+    firebaseServiceAccountJson: string;
+    lineChannelAccessToken: string;
+    telegramBotToken: string;
+}>;
+export default _default;

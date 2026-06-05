@@ -1,0 +1,25 @@
+
+> backend@1.0.0 dev
+> nodemon --watch 'src/**/*.ts' --exec 'ts-node' src/index.ts
+
+[33m[nodemon] 3.1.14[39m
+[33m[nodemon] to restart at any time, enter `rs`[39m
+[33m[nodemon] watching path(s): src/**/*.ts[39m
+[33m[nodemon] watching extensions: ts,json[39m
+[32m[nodemon] starting `ts-node src/index.ts`[39m
+/home/mylms/mylms_project/backend/node_modules/@prisma/client/src/runtime/utils/validatePrismaClientOptions.ts:250
+    throw new PrismaClientConstructorValidationError(
+          ^
+PrismaClientConstructorValidationError: Using engine type "client" requires either "adapter" or "accelerateUrl" to be provided to PrismaClient constructor.
+Read more at https://pris.ly/d/client-constructor
+    at validateDependentOptions (/home/mylms/mylms_project/backend/node_modules/@prisma/client/src/runtime/utils/validatePrismaClientOptions.ts:250:11)
+    at validatePrismaClientOptions (/home/mylms/mylms_project/backend/node_modules/@prisma/client/src/runtime/utils/validatePrismaClientOptions.ts:267:3)
+    at new t (/home/mylms/mylms_project/backend/node_modules/@prisma/client/src/runtime/getPrismaClient.ts:358:7)
+    at Object.<anonymous> (/home/mylms/mylms_project/backend/src/lib/prisma.ts:7:3)
+    at Module._compile (node:internal/modules/cjs/loader:1521:14)
+    at Module.m._compile (/home/mylms/mylms_project/backend/node_modules/ts-node/src/index.ts:1618:23)
+    at Module._extensions..js (node:internal/modules/cjs/loader:1623:10)
+    at Object.require.extensions.<computed> [as .ts] (/home/mylms/mylms_project/backend/node_modules/ts-node/src/index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1266:32)
+    at Function.Module._load (node:internal/modules/cjs/loader:1091:12)
+[31m[nodemon] app crashed - waiting for file changes before starting...[39m

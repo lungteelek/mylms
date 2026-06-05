@@ -1,0 +1,10 @@
+{
+  "name": "mylms-workspace",
+  "private": true,
+  "scripts": {
+    "demo:start": "bash ./scripts/demo-start.sh",
+    "demo:stop": "bash ./scripts/demo-stop.sh",
+    "handoff:update": "bash ./scripts/handoff-update.sh",
+    "handoff:resume": "bash ./scripts/handoff-resume.sh"
+  }
+}

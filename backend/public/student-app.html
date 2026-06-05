@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tutor Tan ผู้เรียน | coursechic.com</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Thai:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <link rel="stylesheet" href="/student-style.css?v=20260605u" />
+</head>
+<body data-theme="pastel">
+  <div class="halo halo-a"></div>
+  <div class="halo halo-b"></div>
+
+  <div class="auth-screen" id="studentAuthScreen">
+    <section class="auth-card card">
+      <div class="auth-copy">
+        <span class="eyebrow">แอปผู้เรียน</span>
+        <h1>เข้าสู่หน้าการเรียนที่จำตำแหน่งเดิม และแยกเครื่องมือเรียนไว้อย่างชัดเจน</h1>
+        <p>ล็อกอินด้วย Gmail ผ่าน Google OAuth เพื่อเห็นคอร์สของตัวเอง ทรานสคริปต์ แผนเรียน และติวเตอร์ AI แบบเซสชันจริง.</p>
+        <div class="auth-pills">
+          <span class="pill live">Google OAuth</span>
+          <span class="pill">ทรานสคริปต์</span>
+          <span class="pill">แผนเรียน</span>
+          <span class="pill">ติวเตอร์ AI</span>
+        </div>
+      </div>
+      <form class="auth-form" id="studentLoginForm">
+        <label class="field">
+          <span>Gmail</span>
+          <input id="studentEmail" type="email" value="lungteelek@gmail.com" autocomplete="email" placeholder="name@gmail.com" required />
+        </label>
+        <label class="field">
+          <span>Password</span>
+          <input id="studentPassword" type="password" value="password123" autocomplete="current-password" required />
+        </label>
+        <button class="primary-btn block" type="submit" id="studentLoginSubmit">ลงชื่อเข้าใช้ด้วย Google</button>
+        <button class="ghost-btn block" id="studentDemoLogin" type="button">ใช้บัญชีสาธิต</button>
+        <p class="auth-note" id="studentAuthNote">ระบบจะใช้ Google OAuth และ Gmail ในการล็อกอิน</p>
+      </form>
+    </section>
+  </div>
+
+  <header class="topbar app-hidden" id="studentTopbar">
+    <div class="brand">
+      <div class="brand-mark">S</div>
+      <div>
+      <div class="brand-title">Tutor Tan ผู้เรียน</div>
+      <div class="brand-sub">เรียนต่อจากจุดเดิม, ทรานสคริปต์, ติวเตอร์ AI, แผนเรียน, coursechic.com</div>
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <div class="theme-switcher" role="group" aria-label="Theme selector">
+        <button class="theme-pill" type="button" data-theme-choice="pastel">พาสเทล</button>
+        <button class="theme-pill" type="button" data-theme-choice="dark">ดาร์ก</button>
+        <button class="theme-pill" type="button" data-theme-choice="cartoon">การ์ตูน</button>
+        <button class="theme-pill" type="button" data-theme-choice="anime">อนิเมะ</button>
+        <button class="theme-pill" type="button" data-theme-choice="cuteboy">คิวท์บอย</button>
+      </div>
+      <div class="session-pill" id="studentPreviewBadge" style="display:none;">โหมดพรีวิว</div>
+      <div class="session-pill" id="studentSessionPill">ยังไม่เชื่อมต่อ</div>
+      <span class="status" id="studentResumeStatus">กลับมาเรียนที่ --:--</span>
+      <button class="secondary-btn" id="studentLogout" type="button">ออกจากระบบ</button>
+    </div>
+  </header>
+
+  <main class="shell app-hidden" id="studentShell">
+    <aside class="left-rail card">
+      <div class="rail-section">
+        <div class="section-head compact">
+          <h2>เมนู</h2>
+          <span>เรียน</span>
+        </div>
+        <nav class="menu" aria-label="Student navigation">
+          <button class="menu-item active" data-view="learn" type="button">เรียน</button>
+          <button class="menu-item" data-view="transcript" type="button">ทราน</button>
+          <button class="menu-item" data-view="planner" type="button">แผน</button>
+          <button class="menu-item" data-view="files" type="button">ไฟล์</button>
+          <button class="menu-item" data-view="course-map" type="button">คอร์ส</button>
+        </nav>
+      </div>
+      <div class="rail-section">
+        <div class="section-head compact">
+          <h2>ความคืบหน้า</h2>
+          <span id="studentProgressLabel">ความคืบหน้าคอร์ส</span>
+        </div>
+        <div class="progress-mini">
+          <strong id="studentProgressValue">--%</strong>
+          <span>คืบหน้า</span>
+        </div>
+        <a class="ghost-btn block" id="studentPublicLandingLink" href="https://tutortan.coursechic.com/" target="_blank" rel="noreferrer">เปิดหน้าสาธารณะ</a>
+        <a class="ghost-btn block" id="studentEnrollLink" href="https://tutortan.coursechic.com/enroll" target="_blank" rel="noreferrer">เปิดหน้าสมัครเรียน</a>
+        <button class="ghost-btn block" id="copyStudentPublicUrlButton" type="button">คัดลอกลิงก์สาธารณะ</button>
+        <button class="ghost-btn block" id="copyStudentEnrollUrlButton" type="button">คัดลอกลิงก์สมัครเรียน</button>
+      </div>
+    </aside>
+
+    <section class="workspace-stack">
+      <section class="hero card">
+        <div class="hero-copy">
+          <div class="eyebrow">แอปผู้เรียน</div>
+          <h1>หน้าเรียนที่พากลับไปต่อจากจุดเดิมได้ทันที</h1>
+          <p>ตัวเล่นอยู่ตรงกลาง ทรานสคริปต์และแผนเรียนแยกคนละเมนู และทุกอย่างผูกกับเซสชันจริงเพื่อกลับมาเรียนต่อได้เร็ว.</p>
+          <div class="hero-pills">
+            <span class="pill live">กลับมาต่อได้</span>
+            <span class="pill">0.75x - 1.5x</span>
+            <span class="pill">ทรานสคริปต์ AI</span>
+            <span class="pill">แผนเรียน</span>
+          </div>
+        </div>
+        <div class="theme-art" aria-hidden="true"></div>
+        <div class="hero-card">
+          <div class="preview-box" id="studentPreviewBanner" style="display:none;margin-bottom:12px;">
+            <span class="label">โหมดพรีวิว</span>
+            <strong>เปิดมาจากตัวสร้างคอร์ส</strong>
+            <small id="studentPreviewCourseLabel">นี่คือพรีวิวของโครงคอร์ส ไม่ใช่เซสชันจริง</small>
+          </div>
+          <div class="hero-stats">
+            <article>
+              <strong id="studentLessonsWeek">--</strong>
+              <span>บทเรียนสัปดาห์นี้</span>
+            </article>
+            <article>
+              <strong id="studentDaysLeft">--</strong>
+              <span>เหลือก่อนสอบ</span>
+            </article>
+          </div>
+          <div class="preview-box big">
+            <span class="label">บทเรียนปัจจุบัน</span>
+            <strong id="studentLessonTitle">--</strong>
+            <small id="studentVideoNote">กำลังโหลดบทเรียน...</small>
+          </div>
+        </div>
+      </section>
+
+      <section class="view-grid">
+        <article class="view card active" data-view-panel="learn">
+          <div class="section-head">
+          <h2>การเรียน</h2>
+            <span id="studentVideoTitle">กำลังเล่น</span>
+          </div>
+          <div class="player-top">
+            <div class="lesson-path">Chemistry / Atom / Orbital</div>
+            <div class="player-meta">
+              <button class="meta-chip" data-speed="0.75" type="button">0.75x</button>
+              <button class="meta-chip active" data-speed="1" type="button">1.0x</button>
+              <button class="meta-chip" data-speed="1.25" type="button">1.25x</button>
+              <button class="meta-chip" data-speed="1.5" type="button">1.5x</button>
+            </div>
+          </div>
+          <div class="video-stage">
+            <div class="video-overlay">
+              <div class="video-badge">กำลังเล่น</div>
+              <strong id="studentVideoHeadline">กำลังโหลด...</strong>
+              <small>แตะข้อความในทรานสคริปต์เพื่อเลื่อนไปจุดนั้นทันที</small>
+            </div>
+            <div class="controls">
+              <div class="bar"><span></span></div>
+              <div class="control-row">
+                <div class="time"><span id="currentTime">00:00</span> / 34:50</div>
+                <div class="actions"><span>◄◄</span><span>▶</span><span>►►</span></div>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <article class="view card" data-view-panel="transcript">
+          <div class="section-head">
+            <h2>ทรานสคริปต์</h2>
+            <span>แตะเพื่อเลื่อนไป</span>
+          </div>
+          <div class="transcript-list" id="studentTranscriptList"></div>
+        </article>
+
+        <article class="view card" data-view-panel="planner">
+          <div class="section-head">
+            <h2>แผนเรียน</h2>
+            <span>วันนี้</span>
+          </div>
+          <div id="studentPlannerList"></div>
+        </article>
+
+        <article class="view card" data-view-panel="files">
+          <div class="section-head">
+            <h2>ไฟล์บทเรียน</h2>
+            <span>PDF, ลิงก์, โน้ต</span>
+          </div>
+          <div class="file-grid" id="studentFileGrid"></div>
+        </article>
+
+        <article class="view card" data-view-panel="course-map">
+          <div class="section-head">
+            <h2>แผนที่คอร์ส</h2>
+            <span>โครงสร้าง</span>
+          </div>
+          <div class="outline-tree" id="studentOutlineTree"></div>
+        </article>
+      </section>
+    </section>
+
+    <aside class="right-rail card">
+      <div class="rail-section">
+        <div class="section-head compact">
+          <h2>ติวเตอร์ AI</h2>
+          <span>เฉพาะ KB</span>
+        </div>
+        <div class="chat-bubble user">สรุปบทนี้แบบสั้นให้หน่อย</div>
+        <div class="chat-bubble ai" id="studentTutorAnswer">กำลังโหลดเนื้อหาจากคอร์สจริง…</div>
+        <div class="chat-bubble user">ช่วยออกโจทย์เคมีเพิ่ม 3 ข้อ</div>
+        <div class="chat-bubble ai" id="studentTutorExercise">AI จะใช้ knowledge base ของบัญชีองค์กรนี้เท่านั้น</div>
+      </div>
+      <div class="rail-section">
+        <div class="section-head compact">
+          <h2>รายละเอียดเซสชัน</h2>
+          <span>กลับมาเรียนต่อ</span>
+        </div>
+        <div class="notes">
+          <p id="studentSessionDetails">ยังไม่มีเซสชัน</p>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <script src="/app-data.js?v=20260604a"></script>
+  <script>
+    (() => {
+      const authScreen = document.getElementById('studentAuthScreen');
+      const topbar = document.getElementById('studentTopbar');
+      const shell = document.getElementById('studentShell');
+      const loginForm = document.getElementById('studentLoginForm');
+      const loginSubmit = document.getElementById('studentLoginSubmit');
+      const demoLoginButton = document.getElementById('studentDemoLogin');
+      const logoutButton = document.getElementById('studentLogout');
+      const sessionPill = document.getElementById('studentSessionPill');
+      const previewBadge = document.getElementById('studentPreviewBadge');
+      const resumeStatus = document.getElementById('studentResumeStatus');
+      const authNote = document.getElementById('studentAuthNote');
+      const sessionDetails = document.getElementById('studentSessionDetails');
+      const studentPublicLandingLink = document.getElementById('studentPublicLandingLink');
+      const studentEnrollLink = document.getElementById('studentEnrollLink');
+      const copyStudentPublicUrlButton = document.getElementById('copyStudentPublicUrlButton');
+      const copyStudentEnrollUrlButton = document.getElementById('copyStudentEnrollUrlButton');
+      const studentPreviewBanner = document.getElementById('studentPreviewBanner');
+      const studentPreviewCourseLabel = document.getElementById('studentPreviewCourseLabel');
+      const menuButtons = Array.from(document.querySelectorAll('.menu-item'));
+      const views = Array.from(document.querySelectorAll('[data-view-panel]'));
+      const speedButtons = Array.from(document.querySelectorAll('[data-speed]'));
+      const themeButtons = Array.from(document.querySelectorAll('[data-theme-choice]'));
+      const emailField = document.getElementById('studentEmail');
+      const passwordField = document.getElementById('studentPassword');
+      const transcriptList = document.getElementById('studentTranscriptList');
+      const progressBar = document.querySelector('.bar span');
+      const currentTime = document.getElementById('currentTime');
+      const fileGrid = document.getElementById('studentFileGrid');
+      const plannerList = document.getElementById('studentPlannerList');
+      const outlineTree = document.getElementById('studentOutlineTree');
+      const workspaceControls = [...menuButtons, ...speedButtons, logoutButton];
+      const isPreviewMode = new URLSearchParams(window.location.search).get('preview') === '1';
+      const themeStorageKey = 'studentAppTheme';
+
+      const applyTheme = (theme) => {
+        const nextTheme = ['dark', 'pastel', 'cartoon', 'anime', 'cuteboy'].includes(theme) ? theme : 'pastel';
+        document.body.dataset.theme = nextTheme;
+        localStorage.setItem(themeStorageKey, nextTheme);
+        themeButtons.forEach((button) => {
+          button.classList.toggle('active', button.dataset.themeChoice === nextTheme);
+        });
+      };
+
+      applyTheme(localStorage.getItem(themeStorageKey) || 'pastel');
+
+      let selectedView = window.CourseChic.getUiView?.('studentView', 'learn') || 'learn';
+
+      const setView = (view) => {
+        menuButtons.forEach((button) => button.classList.toggle('active', button.dataset.view === view));
+        views.forEach((panel) => panel.classList.toggle('active', panel.dataset.viewPanel === view));
+        selectedView = view;
+        window.CourseChic.setUiView?.('studentView', view);
+      };
+
+      const showApp = () => {
+        authScreen.classList.add('hidden');
+        topbar.classList.remove('app-hidden');
+        shell.classList.remove('app-hidden');
+        workspaceControls.forEach((control) => { if (control) control.disabled = false; });
+      };
+
+      const showAuth = () => {
+        authScreen.classList.remove('hidden');
+        topbar.classList.add('app-hidden');
+        shell.classList.add('app-hidden');
+        workspaceControls.forEach((control) => { if (control) control.disabled = true; });
+        sessionPill.textContent = 'ยังไม่เชื่อมต่อ';
+        resumeStatus.textContent = 'กลับมาเรียนที่ --:--';
+        sessionDetails.textContent = 'ยังไม่มีเซสชัน';
+        document.getElementById('studentProgressValue').textContent = '--%';
+        document.getElementById('studentLessonsWeek').textContent = '--';
+        document.getElementById('studentDaysLeft').textContent = '--';
+        document.getElementById('studentLessonTitle').textContent = '--';
+        document.getElementById('studentVideoTitle').textContent = 'กำลังเล่น';
+        document.getElementById('studentVideoHeadline').textContent = 'กำลังโหลด...';
+        document.getElementById('studentVideoNote').textContent = 'กำลังโหลดบทเรียน...';
+        document.getElementById('studentTutorAnswer').textContent = 'กำลังโหลดเนื้อหาจากคอร์สจริง…';
+        document.getElementById('studentTutorExercise').textContent = 'AI จะใช้ฐานความรู้ของบัญชีองค์กรนี้เท่านั้น';
+        transcriptList.innerHTML = '<div class="empty-state">ลงชื่อเข้าใช้เพื่อโหลดทรานสคริปต์</div>';
+        fileGrid.innerHTML = '<div class="empty-state">ลงชื่อเข้าใช้เพื่อโหลดไฟล์</div>';
+        plannerList.innerHTML = '<div class="empty-state">ลงชื่อเข้าใช้เพื่อโหลดแผนเรียน</div>';
+        outlineTree.innerHTML = '<div class="empty-state">ลงชื่อเข้าใช้เพื่อโหลดแผนที่คอร์ส</div>';
+        loginSubmit.disabled = !isLoginReady();
+      };
+
+      const setSpeed = (speed) => {
+        speedButtons.forEach((button) => button.classList.toggle('active', button.dataset.speed === speed));
+      };
+
+      const setAuthNote = (message, kind = '') => {
+        authNote.className = kind ? `auth-note ${kind}` : 'auth-note';
+        authNote.textContent = message;
+      };
+
+      const copyText = async (value) => {
+        try {
+          await navigator.clipboard.writeText(value);
+          setAuthNote('คัดลอกลิงก์สาธารณะแล้ว', 'success');
+        } catch {
+          setAuthNote('คัดลอกลิงก์สาธารณะไม่สำเร็จ', 'error');
+        }
+      };
+
+      const isLoginReady = () => Boolean(
+        emailField.value.trim() &&
+        emailField.checkValidity() &&
+        passwordField.value
+      );
+
+      const setTranscriptLine = (line, transcriptLines) => {
+        transcriptLines.forEach((item) => item.classList.toggle('active', item === line));
+        currentTime.textContent = line.dataset.seek;
+        if (progressBar) progressBar.style.width = `${line.dataset.progress}%`;
+      };
+
+      const renderTranscript = (segments) => {
+        transcriptList.innerHTML = segments.map((segment, index) => `
+          <button class="line ${index === 0 ? 'active' : ''}" data-seek="${segment.seek}" data-progress="${segment.progress}" type="button">
+            <span>${segment.seek}</span>
+            <p>${segment.text}</p>
+          </button>
+        `).join('');
+        const transcriptLines = Array.from(transcriptList.querySelectorAll('.line'));
+        transcriptLines.forEach((line) => line.addEventListener('click', () => setTranscriptLine(line, transcriptLines)));
+        if (transcriptLines[0]) setTranscriptLine(transcriptLines[0], transcriptLines);
+      };
+
+      const renderFiles = (files) => {
+        fileGrid.innerHTML = files.map((file) => `
+          <a href="${file.href}" class="file-card" ${file.external ? 'target="_blank" rel="noreferrer"' : ''}>
+            <strong>${file.title}</strong>
+            <span>${file.label}</span>
+          </a>
+        `).join('');
+      };
+
+      const renderPlanner = (items) => {
+        plannerList.innerHTML = items.map((item, index) => `
+          <div class="planner-card ${index === items.length - 1 ? 'accent' : ''}">
+            <strong>${item.time}</strong>
+            <p>${item.text}</p>
+          </div>
+        `).join('');
+      };
+
+      const renderOutline = (nodes) => {
+        outlineTree.innerHTML = nodes.map((node, index) => `
+          <div class="node ${index === 0 ? 'main' : index === nodes.length - 1 ? 'active' : ''}">${node}</div>
+        `).join('');
+      };
+
+      const applyStudentData = async () => {
+        resumeStatus.textContent = 'กำลังโหลดพื้นที่ทำงาน...';
+        workspaceControls.forEach((control) => { if (control) control.disabled = true; });
+        const data = isPreviewMode
+          ? window.CourseChic.loadStudentPreview()
+          : await window.CourseChic.loadStudentDashboard();
+        showApp();
+        if (studentPreviewBanner) {
+          studentPreviewBanner.style.display = isPreviewMode ? 'grid' : 'none';
+        }
+        if (previewBadge) {
+          previewBadge.style.display = isPreviewMode ? 'inline-flex' : 'none';
+        }
+        sessionPill.textContent = `${data.user.name} • ${data.tenant.name}`;
+        sessionDetails.textContent = `${data.user.email} · บัญชีองค์กร ${data.tenant.slug}`;
+        resumeStatus.textContent = `กลับมาเรียนที่ ${data.resumeAt}`;
+        const publicUrl = `https://${data.tenant.slug}.coursechic.com/`;
+        const enrollUrl = `https://${data.tenant.slug}.coursechic.com/enroll`;
+        studentPublicLandingLink.href = publicUrl;
+        studentEnrollLink.href = enrollUrl;
+        copyStudentPublicUrlButton.dataset.url = publicUrl;
+        copyStudentEnrollUrlButton.dataset.url = enrollUrl;
+        document.getElementById('studentProgressValue').textContent = `${data.progress}%`;
+        document.getElementById('studentLessonsWeek').textContent = data.lessonsThisWeek;
+        document.getElementById('studentDaysLeft').textContent = `${data.daysLeft} วัน`;
+        document.getElementById('studentLessonTitle').textContent = data.selectedCourse.title;
+        document.getElementById('studentVideoTitle').textContent = data.selectedModuleTitle;
+        document.getElementById('studentVideoHeadline').textContent = data.selectedModuleTitle;
+        document.getElementById('studentVideoNote').textContent = `${data.selectedCourse.modules.length || 0} บทเรียนในคอร์สนี้`;
+        document.getElementById('studentTutorAnswer').textContent = data.aiSummary;
+        document.getElementById('studentTutorExercise').textContent = data.aiExercise;
+        if (isPreviewMode && studentPreviewCourseLabel) {
+          const previewSlug = data.selectedCourse?.slug || 'course-preview';
+          studentPreviewCourseLabel.textContent = `พรีวิว: ${data.selectedCourse.title} • ${previewSlug}`;
+        }
+        renderTranscript(data.transcript);
+        renderFiles(data.files);
+        renderPlanner(data.planner);
+        renderOutline(data.courseMap);
+        if (isPreviewMode) {
+          setAuthNote('กำลังดูพรีวิวจากตัวสร้างคอร์ส', 'success');
+        }
+      };
+
+      loginForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        if (!isLoginReady()) {
+          setAuthNote('ตรวจ Gmail และรหัสผ่าน', 'error');
+          return;
+        }
+        loginSubmit.disabled = true;
+        setAuthNote('กำลังลงชื่อเข้าใช้ผ่าน Google...');
+        authScreen.classList.add('is-loading');
+        try {
+          await window.CourseChic.login({
+            email: emailField.value.trim(),
+            password: passwordField.value,
+          });
+          await applyStudentData();
+          setAuthNote('ลงชื่อเข้าใช้ด้วย Google แล้ว', 'success');
+        } catch (error) {
+          setAuthNote(error.message, 'error');
+        } finally {
+          authScreen.classList.remove('is-loading');
+          loginSubmit.disabled = false;
+        }
+      });
+
+      demoLoginButton.addEventListener('click', async () => {
+        loginSubmit.disabled = true;
+        setAuthNote('กำลังโหลดบัญชีสาธิต...');
+        authScreen.classList.add('is-loading');
+        try {
+          await window.CourseChic.login({
+            email: 'lungteelek@gmail.com',
+            password: 'password123',
+          });
+          await applyStudentData();
+          setAuthNote('ลงชื่อเข้าใช้ด้วยบัญชีสาธิตแล้ว', 'success');
+        } catch (error) {
+          setAuthNote(error.message, 'error');
+        } finally {
+          authScreen.classList.remove('is-loading');
+          loginSubmit.disabled = false;
+        }
+      });
+
+      logoutButton.addEventListener('click', () => {
+        window.CourseChic.logout();
+        showAuth();
+      });
+
+      copyStudentPublicUrlButton.addEventListener('click', () => {
+        const url = copyStudentPublicUrlButton.dataset.url || studentPublicLandingLink.href;
+        if (!url) return;
+        copyText(url);
+      });
+
+      copyStudentEnrollUrlButton.addEventListener('click', () => {
+        const url = copyStudentEnrollUrlButton.dataset.url || studentEnrollLink.href;
+        if (!url) return;
+        copyText(url);
+      });
+
+      menuButtons.forEach((button) => button.addEventListener('click', () => setView(button.dataset.view)));
+      speedButtons.forEach((button) => button.addEventListener('click', () => setSpeed(button.dataset.speed)));
+      themeButtons.forEach((button) => button.addEventListener('click', () => applyTheme(button.dataset.themeChoice)));
+
+      if (isPreviewMode) {
+        applyStudentData().catch(() => showAuth());
+      } else if (window.CourseChic.hasSession()) {
+        applyStudentData().catch(() => showAuth());
+      } else {
+        showAuth();
+      }
+
+      setView(selectedView);
+
+      [emailField, passwordField].forEach((field) => {
+        field.addEventListener('input', () => {
+          loginSubmit.disabled = !isLoginReady();
+        });
+      });
+
+      loginSubmit.disabled = !isLoginReady();
+    })();
+  </script>
+</body>
+</html>

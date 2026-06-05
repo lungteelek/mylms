@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CourseChic Platform Console</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Thai:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --bg:#07111f;
+      --bg2:#0b172b;
+      --surface:rgba(10,20,38,.86);
+      --surface-2:rgba(13,25,46,.9);
+      --line:rgba(90,211,255,.14);
+      --line-strong:rgba(90,211,255,.28);
+      --text:#eef5ff;
+      --muted:#9db1cf;
+      --cyan:#5ad3ff;
+      --violet:#8c7dff;
+      --success:#35d39f;
+      --danger:#ff6b8a;
+      --shadow:0 24px 70px rgba(0,0,0,.32);
+      --r:20px;
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;min-height:100%}
+    body{
+      font-family:'Inter','Noto Sans Thai',sans-serif;
+      color:var(--text);
+      background:
+        radial-gradient(circle at 12% 18%, rgba(90,211,255,.16), transparent 26%),
+        radial-gradient(circle at 84% 12%, rgba(140,125,255,.14), transparent 24%),
+        linear-gradient(180deg,var(--bg),var(--bg2));
+    }
+    a{color:inherit}
+    .wrap{max-width:1360px;margin:0 auto;padding:14px 20px 28px}
+    .top{position:relative;min-height:0;margin-bottom:0}
+    .brand{display:none}
+    .actions{
+      position:fixed;
+      bottom:14px;
+      right:20px;
+      z-index:20;
+      display:flex;
+      gap:6px;
+      flex-wrap:wrap;
+      justify-content:flex-end;
+    }
+    .btn{
+      min-height:36px;padding:0 11px;border-radius:10px;
+      border:1px solid rgba(255,255,255,.08);
+      background:rgba(255,255,255,.04);
+      color:var(--text);font:inherit;font-weight:700;
+      display:inline-flex;align-items:center;justify-content:center;gap:8px;
+      text-decoration:none;
+      transition:transform .18s ease, border-color .18s ease, background .18s ease;
+    }
+    .btn:hover{transform:translateY(-1px);border-color:rgba(90,211,255,.24);background:rgba(255,255,255,.06)}
+    .btn:disabled{
+      opacity:.55;
+      cursor:not-allowed;
+      transform:none;
+      background:rgba(255,255,255,.03);
+    }
+    .btn.primary{
+      border:0;
+      background:linear-gradient(135deg,var(--cyan),var(--violet));
+      color:#07111f;
+    }
+    .btn.primary:hover{filter:saturate(1.03) brightness(1.02)}
+    .floating-shadow{
+      box-shadow:0 14px 30px rgba(0,0,0,.22), 0 0 0 1px rgba(255,255,255,.05);
+      backdrop-filter:saturate(160%) blur(12px);
+    }
+    .hero{
+      display:grid;grid-template-columns:minmax(0,1.08fr) minmax(300px,.92fr);
+      gap:12px;align-items:start;
+    }
+    .card{
+      background:var(--surface);
+      border:1px solid var(--line);
+      border-radius:var(--r);
+      box-shadow:var(--shadow);
+      backdrop-filter:saturate(140%) blur(8px);
+    }
+    .panel{padding:14px}
+    .eyebrow{
+      display:inline-flex;align-items:center;gap:8px;
+      font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;
+      color:var(--cyan);
+    }
+    .eyebrow::before{
+      content:"";width:8px;height:8px;border-radius:999px;background:var(--cyan);
+      box-shadow:0 0 0 4px rgba(90,211,255,.12);
+    }
+    h1{
+      margin:6px 0 8px;
+      font-size:clamp(1.9rem,3.8vw,3.8rem);
+      line-height:1.02;
+      letter-spacing:-.04em;
+      text-wrap:balance;
+    }
+    p{margin:0;color:var(--muted);line-height:1.75;max-width:68ch}
+    .chips{display:none}
+    .chip{
+      display:inline-flex;align-items:center;gap:8px;
+      padding:10px 12px;border-radius:999px;
+      background:rgba(255,255,255,.04);
+      border:1px solid rgba(255,255,255,.06);
+      color:var(--text);
+      font-size:.92rem;font-weight:600;
+    }
+    .chip strong{font-weight:800}
+    .chip.ok{border-color:rgba(53,211,159,.18);background:rgba(53,211,159,.08)}
+    .chip.dim{color:var(--muted)}
+    .summary{
+      display:grid;gap:12px;height:100%;
+      padding:22px;
+      background:linear-gradient(180deg,rgba(13,25,46,.95),rgba(10,20,38,.92));
+    }
+    .summary-grid{
+      display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:6px;
+    }
+    .mini{
+      padding:14px;border-radius:16px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);
+      min-height:108px;
+    }
+    .mini .label{display:block;font-size:12px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.08em}
+    .mini strong{display:block;margin-top:10px;font-size:1.05rem}
+    .mini small{display:block;margin-top:8px;color:var(--muted);line-height:1.55}
+    .layout{display:grid;grid-template-columns:1.12fr .88fr;gap:18px;margin-top:18px}
+    .section-title{
+      display:flex;justify-content:space-between;align-items:center;gap:10px;
+      margin-bottom:14px;
+    }
+    .section-title h2{margin:0;font-size:1.1rem}
+    .section-title span{color:var(--muted);font-size:.9rem}
+    .form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+    .field{display:grid;gap:3px}
+    .field.full{grid-column:1 / -1}
+    .field span{font-size:12px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.08em}
+    .field input,.field select,.field textarea{
+      width:100%;
+      border:1px solid rgba(255,255,255,.1);
+      background:rgba(255,255,255,.04);
+      color:var(--text);
+      border-radius:14px;
+      padding:11px 13px;
+      font:inherit;
+      outline:none;
+    }
+    .field input:invalid{
+      border-color:rgba(255,107,138,.32);
+    }
+    .field textarea{min-height:92px;resize:vertical}
+    .field input:focus,.field select:focus,.field textarea:focus{
+      border-color:rgba(90,211,255,.4);
+      box-shadow:0 0 0 3px rgba(90,211,255,.1);
+    }
+    .field input.invalid{
+      border-color:rgba(255,107,138,.55);
+      box-shadow:0 0 0 3px rgba(255,107,138,.12);
+    }
+    .field input[data-state="error"]{
+      border-color:rgba(255,107,138,.72);
+      box-shadow:0 0 0 3px rgba(255,107,138,.16);
+    }
+    .field-error{
+      min-height:.95em;
+      color:rgba(255,107,138,.7);
+      font-size:.8rem;
+      line-height:1.3;
+    }
+    .field-hint{
+      color:var(--muted);
+      font-size:.8rem;
+      line-height:1.3;
+    }
+    .inline-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
+    .segmented{
+      display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;
+      padding:6px;background:rgba(255,255,255,.04);
+      border:1px solid rgba(255,255,255,.06);
+      border-radius:16px;
+    }
+    .segment{
+      border:0;background:transparent;color:var(--muted);
+      border-radius:12px;padding:11px 10px;font:inherit;font-weight:700;
+      cursor:pointer;
+    }
+    .segment.active{background:rgba(90,211,255,.12);color:var(--text)}
+    .context-list{display:grid;gap:10px}
+    .row{
+      padding:14px;border-radius:16px;background:rgba(255,255,255,.04);
+      border:1px solid rgba(255,255,255,.06)
+    }
+    .row strong{display:block;margin-bottom:6px;font-size:.95rem}
+    .row small{color:var(--muted);line-height:1.55}
+    .mono{font-family:ui-monospace,SFMono-Regular,Consolas,monospace}
+    .status{
+      margin-top:14px;
+      padding:14px 16px;
+      border-radius:16px;
+      background:rgba(255,255,255,.04);
+      border:1px solid rgba(255,255,255,.06);
+      color:var(--text);
+      line-height:1.6;
+    }
+    .status.success{border-color:rgba(53,211,159,.22);background:rgba(53,211,159,.08)}
+    .status.error{border-color:rgba(255,107,138,.24);background:rgba(255,107,138,.08)}
+    .status a{color:var(--cyan);text-decoration:none;font-weight:700}
+    .result{
+      margin-top:14px;
+      display:none;
+      padding:16px;
+      border-radius:18px;
+      background:linear-gradient(180deg,rgba(7,17,31,.15),rgba(7,17,31,.08));
+      border:1px solid rgba(90,211,255,.18);
+    }
+    .result.show{display:block}
+    .result-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap}
+    .result h3{margin:0 0 8px;font-size:1.05rem}
+    .result p{margin:0 0 10px}
+    .result-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+    .muted-note{font-size:.92rem;color:var(--muted);line-height:1.6}
+    .dns-note{
+      margin-top:10px;
+      padding:12px 14px;
+      border-radius:14px;
+      background:rgba(255,255,255,.03);
+      border:1px dashed rgba(255,255,255,.1);
+      color:var(--muted);
+      font-size:.92rem;
+      line-height:1.55;
+    }
+    @media (max-width: 1100px){
+      .hero,.layout{grid-template-columns:1fr}
+    }
+    @media (max-width: 700px){
+      .wrap{padding-inline:16px}
+      .actions{bottom:12px;right:12px}
+      .actions .btn{min-height:32px;padding:0 9px;border-radius:10px;font-size:.86rem}
+      .hero{gap:10px}
+      .panel{padding:12px}
+      .result{margin-top:10px}
+      .wrap{padding-bottom:48px}
+      form#createTutorForm{margin-top:12px !important}
+      .summary-grid,.form-grid,.segmented{grid-template-columns:1fr}
+      h1{font-size:1.85rem;line-height:.98}
+    }
+    @media (prefers-reduced-motion: reduce){
+      *{scroll-behavior:auto;transition:none!important;animation:none!important}
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="top">
+      <div class="actions">
+        <a class="btn floating-shadow" href="/admin-app.html" aria-label="Open Admin App" title="Open Admin App">
+          <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="2.5" y="3" width="11" height="10" rx="2.5" stroke="currentColor" stroke-width="1.4"/>
+            <path d="M5 6.2h6M5 8.5h4.5M5 10.8h3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+          </svg>
+        </a>
+      </div>
+    </div>
+
+    <section class="hero">
+      <div class="card panel">
+        <span class="eyebrow">Platform console</span>
+        <h1>สร้างบัญชีองค์กรผ่าน Google OAuth ได้จากหน้าจอเดียว</h1>
+        <div class="result" id="resultCard" aria-live="polite"></div>
+
+        <form id="createTutorForm" style="margin-top:18px">
+          <div class="form-grid">
+            <label class="field full">
+            <span>แบบด่วน</span>
+              <div class="segmented" role="tablist" aria-label="Preset accounts">
+              <button class="segment active" type="button" data-preset="new">สมัครผ่าน Google</button>
+              <button class="segment" type="button" data-preset="teacher">Teacher A</button>
+              <button class="segment" type="button" data-preset="support">บัญชีสนับสนุน</button>
+              </div>
+            </label>
+
+            <label class="field">
+            <span>ชื่อบัญชี</span>
+              <input id="tutorName" value="New Tutor" autocomplete="organization" placeholder="Tutor Tan" required />
+              <small class="field-error" id="nameError" aria-live="polite"></small>
+            </label>
+            <label class="field">
+              <span>ชื่อย่อใน URL</span>
+              <input id="tutorSlug" value="tutortan" autocomplete="off" required />
+              <small class="muted-note"><strong>กติกา:</strong> 4+ ตัวอักษร, a-z 0-9 `-`, ห้ามใช้คำระบบ</small>
+              <small class="field-error" id="slugError" aria-live="polite"></small>
+            </label>
+            <label class="field">
+            <span>อีเมล</span>
+              <input id="tutorEmail" type="email" value="new-tutor@gmail.com" autocomplete="email" placeholder="name@gmail.com" required />
+              <small class="field-error" id="emailError" aria-live="polite"></small>
+            </label>
+            <label class="field">
+              <span>รหัสผ่านเริ่มต้น</span>
+              <input id="tutorPassword" type="password" value="password123" autocomplete="new-password" required />
+            </label>
+            <label class="field full">
+            <span>หมายเหตุ</span>
+            <textarea id="notes" placeholder="หมายเหตุสำหรับ onboarding หรือ handoff"></textarea>
+            </label>
+          </div>
+
+          <div class="inline-actions">
+            <button class="btn primary" type="submit" id="submitButton">สร้างบัญชีองค์กร</button>
+            <button class="btn" type="button" id="loadContext">รีเฟรชบริบท</button>
+            <button class="btn" type="button" id="copyUrlButton">คัดลอก URL</button>
+          </div>
+
+          <div class="dns-note">
+            ขั้นตอนสมัครจริงควรพาไปที่ <strong>Google OAuth</strong> และใช้ <strong>Gmail</strong> สำหรับล็อกอินของ tutor.
+            wildcard subdomain `*.coursechic.com` รับหน้าที่พาหน้า public ของบัญชีองค์กรเข้าเซิร์ฟเวอร์อยู่แล้ว
+            จึงไม่ต้องสร้าง DNS record รายตัวอีก
+          </div>
+        </form>
+
+        <div class="status" id="resultStatus">ลงชื่อเข้าใช้ใน admin app ก่อน</div>
+      </div>
+
+      <aside class="card summary">
+        <div class="section-title" style="margin-bottom:4px">
+          <h2>บริบท</h2>
+          <span>บัญชีองค์กรปัจจุบัน + บทบาท</span>
+        </div>
+        <div class="summary-grid">
+          <div class="mini">
+          <span class="label">บัญชีองค์กร</span>
+            <strong id="tenantName">--</strong>
+            <small id="tenantSlug">--</small>
+          </div>
+          <div class="mini">
+          <span class="label">บทบาท</span>
+            <strong id="tenantRole">--</strong>
+            <small id="tenantPlan">--</small>
+          </div>
+          <div class="mini">
+            <span class="label">URL ปลายทาง</span>
+            <strong id="targetUrl">https://tutortan.coursechic.com</strong>
+            <small>URL ของบัญชีองค์กรสร้างจากชื่อย่อใน URL นี้</small>
+          </div>
+          <div class="mini">
+            <span class="label">Public URL</span>
+            <strong id="dnsPreview">https://tutortan.coursechic.com</strong>
+            <small id="dnsPreviewNote">ใช้ wildcard subdomain ได้เลย</small>
+          </div>
+        </div>
+
+        <div class="section-title" style="margin-top:6px">
+          <h2>ขั้นตอนแพลตฟอร์ม</h2>
+          <span>flow เดียวจบ</span>
+        </div>
+        <div class="context-list" id="contextList">
+          <div class="row">
+            <strong>1. สร้างบัญชีองค์กร</strong>
+            <small>สร้าง organization, tutor user, และ owner membership พร้อมกันผ่าน Google OAuth</small>
+          </div>
+          <div class="row">
+            <strong>2. เปิด URL</strong>
+            <small>ชื่อย่อใน URL จะกลายเป็น subdomain บน <span class="mono">coursechic.com</span> โดยอัตโนมัติ</small>
+          </div>
+          <div class="row">
+            <strong>3. ใช้ landing page</strong>
+            <small>วาง HTML แล้วบันทึกเป็น <span class="mono">index.html</span> ของบัญชีองค์กรได้เลย</small>
+          </div>
+        </div>
+      </aside>
+    </section>
+  </div>
+
+  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <script src="/app-data.js?v=20260604a"></script>
+  <script>
+    (() => {
+      const form = document.getElementById('createTutorForm');
+      const resultStatus = document.getElementById('resultStatus');
+      const resultCard = document.getElementById('resultCard');
+      const submitButton = document.getElementById('submitButton');
+      const tenantName = document.getElementById('tenantName');
+      const tenantSlug = document.getElementById('tenantSlug');
+      const tenantRole = document.getElementById('tenantRole');
+      const tenantPlan = document.getElementById('tenantPlan');
+      const targetUrl = document.getElementById('targetUrl');
+      const nameError = document.getElementById('nameError');
+      const emailError = document.getElementById('emailError');
+      const slugError = document.getElementById('slugError');
+      const presetButtons = [...document.querySelectorAll('[data-preset]')];
+      const fields = {
+        name: document.getElementById('tutorName'),
+        slug: document.getElementById('tutorSlug'),
+        email: document.getElementById('tutorEmail'),
+        password: document.getElementById('tutorPassword'),
+        notes: document.getElementById('notes'),
+      };
+      let lastUrl = '';
+      let lastCopyLabel = 'Copy URL';
+      const RESERVED_TUTOR_SLUG_PARTS = [
+        'admin',
+        'administrator',
+        'mail',
+        'email',
+        'webmaster',
+        'root',
+        'system',
+        'sys',
+        'support',
+        'help',
+        'billing',
+        'payment',
+        'payments',
+        'api',
+        'app',
+        'console',
+        'login',
+        'auth',
+        'secure',
+        'portal',
+        'dashboard',
+        'status',
+        'internal',
+        'backend',
+        'frontend',
+        'server',
+        'nginx',
+        'www',
+        'ftp',
+        'smtp',
+        'imap',
+        'pop3',
+        'noreply',
+        'no-reply',
+        'postmaster',
+        'hostmaster',
+        'abuse',
+        'security',
+        'contact',
+        'info',
+        'demo',
+        'test',
+        'staging',
+        'dev',
+        'beta',
+      ];
+
+      function escapeHtml(value) {
+        return String(value ?? '').replace(/[&<>"']/g, (char) => ({
+          '&': '&amp;',
+          '<': '&lt;',
+          '>': '&gt;',
+          '"': '&quot;',
+          "'": '&#39;',
+        }[char]));
+      }
+
+      function slugify(value) {
+        return String(value || '')
+          .trim()
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-+|-+$/g, '')
+          || 'tutortan';
+      }
+
+      function normalizeSlug(value) {
+        return String(value || '').trim().toLowerCase();
+      }
+
+      function validateSlugInput(value) {
+        const slug = normalizeSlug(value);
+        if (slug.length < 4) {
+          return 'ชื่อย่อใน URL ต้องมีอย่างน้อย 4 ตัวอักษร';
+        }
+        if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) {
+          return 'ชื่อย่อใน URL ใช้ได้เฉพาะ a-z, 0-9 และขีดกลาง';
+        }
+        if (/^-|-$/.test(slug)) {
+          return 'ชื่อย่อใน URL ห้ามขึ้นต้นหรือลงท้ายด้วยขีดกลาง';
+        }
+        if (RESERVED_TUTOR_SLUG_PARTS.some((part) => slug === part || slug.includes(part))) {
+          return 'ชื่อย่อใน URL นี้สงวนไว้หรือคล้ายกับคำระบบ';
+        }
+        return null;
+      }
+
+      function setSlugError(message) {
+        fields.slug.classList.toggle('invalid', Boolean(message));
+        fields.slug.dataset.state = message ? 'error' : '';
+        slugError.textContent = message || '';
+      }
+
+      function setNameError(message) {
+        fields.name.classList.toggle('invalid', Boolean(message));
+        fields.name.dataset.state = message ? 'error' : '';
+        nameError.textContent = message || '';
+      }
+
+      function setEmailError(message) {
+        fields.email.classList.toggle('invalid', Boolean(message));
+        fields.email.dataset.state = message ? 'error' : '';
+        emailError.textContent = message || '';
+      }
+
+      function validateForm() {
+        const name = fields.name.value.trim();
+        const rawSlug = fields.slug.value.trim();
+        const email = fields.email.value.trim();
+        const password = fields.password.value;
+        const nameErrorMessage = name.length < 4 ? 'ชื่อบัญชีสั้นไป' : '';
+        const emailErrorMessage = !email.endsWith('@gmail.com') || !fields.email.checkValidity() ? 'Gmail ไม่ถูก' : '';
+        const passwordError = password.length < 8 ? 'รหัสผ่านสั้นไป' : '';
+        const slugErrorMessage = validateSlugInput(rawSlug);
+        setNameError(nameErrorMessage);
+        setEmailError(emailErrorMessage);
+        const slugError = slugErrorMessage;
+        setSlugError(slugError);
+        if (nameErrorMessage) return nameErrorMessage;
+        if (emailErrorMessage) return emailErrorMessage;
+        if (passwordError) return passwordError;
+        if (slugError) return slugError;
+        return null;
+      }
+
+      function syncPreview() {
+        const slug = slugify(fields.slug.value);
+        const url = `https://${slug}.coursechic.com`;
+        lastUrl = url;
+        targetUrl.textContent = url;
+        tenantSlug.textContent = slug;
+        landingPageTitle.textContent = `URL public: ${url}`;
+        setNameError(fields.name.value.trim().length < 4 ? 'ชื่อบัญชีสั้นไป' : '');
+        setEmailError(!fields.email.value.trim().endsWith('@gmail.com') || !fields.email.checkValidity() ? 'Gmail ไม่ถูก' : '');
+        setSlugError(validateSlugInput(fields.slug.value.trim()));
+        submitButton.disabled = !isFormReady();
+        submitButton.title = submitButton.disabled ? 'กรอกชื่อบัญชีองค์กร, ชื่อย่อใน URL, และ Gmail (@gmail.com) ก่อน' : '';
+      }
+
+      function isFormReady() {
+        return !validateForm();
+      }
+
+      function showStatus(type, message) {
+        resultStatus.className = `status${type ? ` ${type}` : ''}`;
+        resultStatus.textContent = message;
+      }
+
+      async function loadContext() {
+        try {
+          const session = window.CourseChic.getSession?.();
+          if (!session?.token) {
+            showStatus('error', 'ลงชื่อเข้าใช้ใน admin app ก่อน');
+            tenantName.textContent = '--';
+            tenantRole.textContent = '--';
+            tenantPlan.textContent = '--';
+            return;
+          }
+          const ctx = await window.CourseChic.request('/api/tenant/context', { headers: {} });
+          tenantName.textContent = ctx.tenant?.name || '--';
+          tenantSlug.textContent = ctx.tenant?.slug || '--';
+          tenantRole.textContent = ctx.membership?.role || '--';
+          tenantPlan.textContent = `${ctx.license?.plan || '--'} · ${ctx.license?.status || '--'}`;
+          showStatus('', 'โหลดบริบทแล้ว');
+        } catch (error) {
+          showStatus('error', error.message);
+        }
+      }
+
+      function setPreset(kind) {
+        presetButtons.forEach((button) => button.classList.toggle('active', button.dataset.preset === kind));
+        if (kind === 'teacher') {
+          fields.name.value = 'Teacher A';
+          fields.slug.value = 'teacher-a';
+          fields.email.value = 'teacher-a@gmail.com';
+          fields.password.value = 'password123';
+        } else if (kind === 'support') {
+          fields.name.value = 'Support Account';
+          fields.slug.value = 'support';
+          fields.email.value = 'support@gmail.com';
+          fields.password.value = 'password123';
+        } else {
+          fields.name.value = 'Tutor Tan';
+          fields.slug.value = 'tutortan';
+          fields.email.value = 'tutortan@gmail.com';
+          fields.password.value = 'password123';
+        }
+        setNameError('');
+        setEmailError('');
+        setSlugError('');
+        syncPreview();
+      }
+
+      async function copyUrl() {
+        try {
+          await navigator.clipboard.writeText(lastUrl);
+          lastCopyLabel = document.getElementById('copyUrlButton').textContent;
+          document.getElementById('copyUrlButton').textContent = 'คัดลอกแล้ว';
+          window.setTimeout(() => {
+            document.getElementById('copyUrlButton').textContent = lastCopyLabel;
+          }, 1200);
+          showStatus('success', `คัดลอก ${lastUrl} แล้ว`);
+        } catch {
+          showStatus('error', 'คัดลอกไม่สำเร็จ');
+        }
+      }
+
+      form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const formError = validateForm();
+        if (formError) {
+          showStatus('error', formError);
+          return;
+        }
+        const previousLabel = submitButton.textContent;
+        submitButton.disabled = true;
+        submitButton.textContent = 'กำลังสร้าง...';
+        showStatus('', 'กำลังสร้างบัญชีองค์กร...');
+        resultCard.classList.remove('show');
+        resultCard.innerHTML = '';
+        try {
+          const payload = {
+            name: fields.name.value.trim(),
+            slug: fields.slug.value.trim(),
+            email: fields.email.value.trim(),
+            password: fields.password.value,
+            notes: fields.notes.value.trim(),
+          };
+          const response = await window.CourseChic.request('/api/admin/tutors', {
+            method: 'POST',
+            body: JSON.stringify(payload),
+          });
+          const tenant = response?.data?.tenant;
+          const tutor = response?.data?.tutor;
+          const url = tenant?.url || `https://${payload.slug}.coursechic.com`;
+          lastUrl = url;
+          resultCard.classList.add('show');
+          resultCard.innerHTML = `
+            <div class="result-top">
+              <div>
+                <h3>สร้างบัญชีองค์กรสำเร็จ</h3>
+                <p>${escapeHtml(tenant?.name || payload.name)} พร้อมใช้งานที่ <a href="${escapeHtml(url)}" target="_blank" rel="noreferrer">${escapeHtml(url)}</a></p>
+              </div>
+              <div class="chip ok">พร้อมใช้</div>
+            </div>
+            <div class="summary-grid" style="margin-top:14px">
+              <div class="mini">
+                <span class="label">ชื่อย่อใน URL</span>
+            <strong class="mono">${escapeHtml(tenant?.slug || payload.slug)}</strong>
+                <small>ใช้ชื่อย่อนี้กับ URL ของบัญชีองค์กรทั้งหมด</small>
+              </div>
+              <div class="mini">
+                <span class="label">บัญชี tutor</span>
+                <strong>${escapeHtml(tutor?.email || payload.email)}</strong>
+                <small>บัญชีนี้ใช้ Gmail สำหรับลงชื่อเข้าใช้ผ่าน Google OAuth</small>
+              </div>
+              <div class="mini">
+                <span class="label">Public URL</span>
+                <strong>${escapeHtml(url)}</strong>
+                <small>เปิดหน้า public ของบัญชีองค์กรได้ทันที</small>
+              </div>
+              <div class="mini">
+                <span class="label">เปิด URL</span>
+                <strong><a href="${escapeHtml(url)}" target="_blank" rel="noreferrer">${escapeHtml(url)}</a></strong>
+                <small>เปิดบัญชีองค์กรในแท็บใหม่หลังจากสร้างเสร็จ</small>
+              </div>
+            </div>
+            <div class="result-actions">
+              <a class="btn primary" href="${escapeHtml(url)}" target="_blank" rel="noreferrer">เปิด URL ของบัญชีองค์กร</a>
+              <button class="btn" type="button" id="copyCreatedUrl">คัดลอก URL</button>
+            </div>
+          `;
+          showStatus('success', `สร้าง ${tenant?.slug || payload.slug} แล้ว`);
+          await loadContext();
+          const copyCreatedUrl = document.getElementById('copyCreatedUrl');
+          copyCreatedUrl?.addEventListener('click', copyUrl);
+        } catch (error) {
+          const message = String(error?.message || 'เกิดข้อผิดพลาด');
+          showStatus('error', message);
+          const clientSlugError = validateSlugInput(fields.slug.value.trim());
+          if (clientSlugError) setSlugError(clientSlugError);
+          resultCard.classList.remove('show');
+        } finally {
+          submitButton.disabled = false;
+          submitButton.textContent = previousLabel || 'สร้างบัญชีองค์กร';
+          syncPreview();
+        }
+      });
+
+      document.getElementById('loadContext').addEventListener('click', loadContext);
+      document.getElementById('copyUrlButton').addEventListener('click', copyUrl);
+      presetButtons.forEach((button) => {
+        button.addEventListener('click', () => setPreset(button.dataset.preset));
+      });
+      Object.values(fields).forEach((field) => field.addEventListener('input', syncPreview));
+      Object.values(fields).forEach((field) => field.addEventListener('change', syncPreview));
+
+      syncPreview();
+      loadContext();
+    })();
+  </script>
+</body>
+</html>

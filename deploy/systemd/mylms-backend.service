@@ -1,0 +1,16 @@
+[Unit]
+Description=MyLMS Backend
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+User=mylms
+WorkingDirectory=/home/mylms/mylms_project/backend
+Environment=NODE_ENV=production
+EnvironmentFile=/home/mylms/mylms_project/backend/.env
+ExecStart=/usr/bin/npm start
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

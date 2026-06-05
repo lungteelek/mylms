@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15
+    container_name: mylms_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-mylms}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-mylms}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: mylms_redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redisdata:/data
+    command: ["redis-server", "--appendonly", "yes"]
+
+  backend:
+    build:
+      context: ./backend
+    container_name: mylms_backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    environment:
+      PORT: 3000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-mylms}?schema=public
+      JWT_SECRET: ${JWT_SECRET:-change-me}
+      DEFAULT_TENANT_SLUG: ${DEFAULT_TENANT_SLUG:-demo-academy}
+      SELF_HOSTED_LICENSE_KEY: ${SELF_HOSTED_LICENSE_KEY:-self-hosted}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      REDIS_URL: redis://redis:6379
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    volumes:
+      - uploads:/app/backend/uploads
+
+volumes:
+  pgdata:
+  uploads:
+  redisdata:

@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CourseChic | Tutor Tan</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Thai:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --bg:#07111f;
+      --bg2:#0b172b;
+      --surface:rgba(10,20,38,.84);
+      --surface2:rgba(12,22,41,.9);
+      --border:rgba(90,211,255,.16);
+      --text:#eef5ff;
+      --muted:#9db1cf;
+      --cyan:#5ad3ff;
+      --violet:#8c7dff;
+      --amber:#ffb86b;
+      --shadow:0 22px 60px rgba(0,0,0,.28);
+      --r:24px;
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;min-height:100%}
+    body{
+      font-family:'Inter','Noto Sans Thai',sans-serif;
+      color:var(--text);
+      background:
+        radial-gradient(circle at 12% 18%, rgba(90,211,255,.14), transparent 28%),
+        radial-gradient(circle at 86% 10%, rgba(140,125,255,.12), transparent 26%),
+        radial-gradient(circle at 50% 100%, rgba(255,184,107,.09), transparent 30%),
+        linear-gradient(180deg,var(--bg),var(--bg2));
+      overflow-x:hidden;
+    }
+    a{color:inherit;text-decoration:none}
+    .wrap{max-width:1240px;margin:0 auto;padding:28px 20px 56px;position:relative;z-index:1}
+    .nav{
+      display:flex;justify-content:space-between;align-items:center;gap:16px;
+      padding:14px 18px;border:1px solid rgba(255,255,255,.08);
+      border-radius:999px;background:rgba(255,255,255,.03);backdrop-filter:blur(16px);
+    }
+    .brand{display:flex;align-items:center;gap:12px;font-weight:800}
+    .mark{
+      width:40px;height:40px;border-radius:14px;display:grid;place-items:center;
+      background:linear-gradient(135deg,var(--cyan),var(--violet));color:#08111f;
+      box-shadow:0 14px 34px rgba(90,211,255,.24);
+    }
+    .nav-links{display:flex;gap:16px;flex-wrap:wrap;color:var(--muted);font-size:14px}
+    .hero{display:grid;grid-template-columns:1.1fr .9fr;gap:24px;align-items:center;padding:72px 0 28px}
+    .eyebrow{
+      display:inline-flex;align-items:center;gap:10px;padding:8px 14px;border-radius:999px;
+      border:1px solid rgba(90,211,255,.18);background:rgba(90,211,255,.07);
+      color:var(--cyan);font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase
+    }
+    h1{
+      margin:18px 0 16px;font-size:clamp(2.8rem,5vw,5.6rem);line-height:1.02;letter-spacing:-.04em;
+      text-wrap:balance;
+    }
+    p{margin:0;color:var(--muted);line-height:1.8;max-width:62ch}
+    .actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:28px}
+    .btn{
+      min-height:48px;padding:0 18px;border-radius:16px;border:1px solid rgba(255,255,255,.1);
+      display:inline-flex;align-items:center;justify-content:center;font-weight:700
+    }
+    .btn.primary{background:linear-gradient(135deg,var(--cyan),var(--violet));color:#07111f;border:0}
+    .btn.ghost{background:rgba(255,255,255,.04);color:var(--text)}
+    .panel{
+      background:linear-gradient(180deg,var(--surface),var(--surface2));
+      border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow);padding:20px
+    }
+    .tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+    .tile{padding:16px;border-radius:18px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06)}
+    .tile strong{display:block;font-size:1.4rem;margin-bottom:8px}
+    .tile span{color:var(--muted);font-size:14px;line-height:1.6}
+    .section{padding:12px 0 0}
+    .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
+    .card{padding:18px;border-radius:20px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06)}
+    .card h3{margin:12px 0 8px;font-size:1.05rem}
+    .card p{font-size:14px}
+    .kicker{font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--amber)}
+    .footer{
+      margin-top:22px;padding:18px 4px;color:var(--muted);font-size:14px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap
+    }
+    @media (max-width: 960px){
+      .hero,.grid{grid-template-columns:1fr}
+      .tiles{grid-template-columns:1fr}
+      h1{font-size:clamp(2.4rem,12vw,4.2rem)}
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="nav">
+      <div class="brand">
+        <div class="mark">C</div>
+        <div>
+          <div>CourseChic</div>
+          <div style="color:var(--muted);font-size:13px;font-weight:600">Tutor Tan learning platform</div>
+        </div>
+      </div>
+      <div class="nav-links">
+        <a href="/admin-app.html">Admin</a>
+        <a href="/student-app.html">Student</a>
+        <a href="#about">About</a>
+      </div>
+    </header>
+
+    <main class="hero">
+      <section>
+        <span class="eyebrow">coursechic.com</span>
+        <h1>เรียน, สอน, และบริหารคอร์สในแพลตฟอร์มเดียวที่พร้อมใช้งานจริง</h1>
+        <p>
+          CourseChic คือบ้านของ Tutor Tan สำหรับจัดการคอร์ส ผู้เรียน การเงิน และ knowledge base
+          โดยแยกพื้นที่ทำงานของแอดมินกับผู้เรียนอย่างชัดเจน และรองรับ tenant ใหม่ได้เป็นราย tutor.
+        </p>
+        <div class="actions">
+          <a class="btn primary" href="/admin-app.html">Open Admin</a>
+          <a class="btn ghost" href="/student-app.html">Open Student</a>
+        </div>
+      </section>
+
+      <aside class="panel">
+        <div class="kicker">Live platform</div>
+        <div class="tiles" style="margin-top:16px">
+          <div class="tile">
+            <strong>Real login</strong>
+            <span>เข้าสู่ระบบด้วย tenant slug และ JWT จริง</span>
+          </div>
+          <div class="tile">
+            <strong>Course builder</strong>
+            <span>สร้าง course tree, assets, และ publish flow</span>
+          </div>
+          <div class="tile">
+            <strong>Student ops</strong>
+            <span>ดู cohort, renewal, progress, และ finance</span>
+          </div>
+          <div class="tile">
+            <strong>AI tutor</strong>
+            <span>knowledge base ต่อ tenant และ lesson</span>
+          </div>
+        </div>
+      </aside>
+    </main>
+
+    <section class="section" id="about">
+      <div class="grid">
+        <article class="card">
+          <div class="kicker">For admins</div>
+          <h3>จัดการคอร์สได้เป็นสัดส่วน</h3>
+          <p>แยกหน้า dashboard, course builder, students, finance, และ knowledge base เพื่อให้ workflow จริงไม่ชนกัน.</p>
+        </article>
+        <article class="card">
+          <div class="kicker">For students</div>
+          <h3>เรียนต่อจากจุดเดิม</h3>
+          <p>หน้าเรียนมี player, transcript, planner, files, และ course map ที่รองรับการ resume จาก session เดิม.</p>
+        </article>
+        <article class="card">
+          <div class="kicker">For new tutors</div>
+          <h3>เพิ่ม tenant ใหม่ได้</h3>
+          <p>สามารถสร้าง tenant ใหม่ต่อ tutor ได้โดยใช้ slug เฉพาะของคนนั้น แล้วแยกข้อมูลกับ tenant อื่นอย่างชัดเจน.</p>
+        </article>
+      </div>
+    </section>
+
+    <div class="footer">
+      <span>Tutor Tan on coursechic.com</span>
+      <span>Admin and student apps are one click away</span>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,4 @@
+
+> backend@1.0.0 start
+> ts-node src/index.ts
+

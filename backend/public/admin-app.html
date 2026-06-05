@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tutor Tan Admin | coursechic.com</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Thai:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/admin-style.css" />
+</head>
+<body>
+  <div class="ambient ambient-a"></div>
+  <div class="ambient ambient-b"></div>
+
+  <div class="auth-screen" id="authScreen">
+    <section class="auth-card card">
+      <div class="auth-copy">
+        <span class="eyebrow">แอปแอดมิน</span>
+        <h1>ล็อกอินเพื่อจัดการคอร์ส นักเรียน และการเงินในหน้าจอเดียว</h1>
+        <p>ใช้บัญชีจริงของบัญชีองค์กรผ่าน Google OAuth, แยกเมนูเป็นสัดส่วน, และเปิดตัวสร้างคอร์สได้จากพื้นที่ทำงานโดยตรง.</p>
+        <div class="auth-features">
+          <span class="pill live">Google OAuth</span>
+          <span class="pill">ตัวสร้างคอร์ส</span>
+          <span class="pill">นักเรียน</span>
+          <span class="pill">การเงิน</span>
+        </div>
+      </div>
+      <form class="auth-form" id="adminLoginForm">
+        <label class="field">
+          <span>อีเมล Gmail</span>
+          <input id="adminEmail" type="email" value="lungteelek@gmail.com" autocomplete="email" placeholder="name@gmail.com" required />
+        </label>
+        <label class="field">
+          <span>รหัสผ่าน</span>
+          <input id="adminPassword" type="password" value="password123" autocomplete="current-password" required />
+        </label>
+        <button class="primary-btn block" type="submit" id="adminLoginSubmit">ลงชื่อเข้าใช้</button>
+        <button class="ghost-btn block" id="adminDemoLogin" type="button">ใช้บัญชีสาธิต</button>
+        <p class="auth-note" id="adminAuthNote">ล็อกอินด้วย Gmail และรหัสผ่านเพื่อเข้าแอปแอดมิน</p>
+      </form>
+    </section>
+  </div>
+
+  <header class="topbar app-hidden" id="adminTopbar">
+    <div class="brand">
+      <div class="brand-mark">A</div>
+      <div>
+        <div class="brand-title">Tutor Tan Admin</div>
+        <div class="brand-sub">งานคอร์ส นักเรียน การเงิน ฐานความรู้</div>
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <button class="session-pill theme-toggle-pill" id="themeToggleButton" type="button" aria-pressed="false">โหมดมืด</button>
+      <div class="session-pill" id="adminSessionPill">ยังไม่เชื่อมต่อ</div>
+      <a class="ghost-btn" href="/student-app.html">ดูมุมผู้เรียน</a>
+      <button class="secondary-btn" id="adminLogout" type="button">ออกจากระบบ</button>
+      <button class="primary-btn" id="publishChangesButton" type="button">เผยแพร่</button>
+    </div>
+  </header>
+
+  <main class="shell app-hidden" id="adminShell">
+    <aside class="left-rail card">
+      <nav class="menu" aria-label="Admin navigation">
+        <button class="menu-item active" data-view="dashboard" type="button"><span class="menu-icon">I</span><span class="menu-label">ภาพรวม</span></button>
+        <button class="menu-item" data-view="builder" type="button"><span class="menu-icon">B</span><span class="menu-label">คอร์ส</span></button>
+        <button class="menu-item" data-view="students" type="button"><span class="menu-icon">S</span><span class="menu-label">นักเรียน</span></button>
+        <button class="menu-item" data-view="finance" type="button"><span class="menu-icon">F</span><span class="menu-label">การเงิน</span></button>
+        <button class="menu-item" data-view="knowledge" type="button"><span class="menu-icon">K</span><span class="menu-label">ฐานความรู้</span></button>
+        <button class="menu-item" data-view="settings" type="button"><span class="menu-icon">⚙</span><span class="menu-label">ตั้งค่า</span></button>
+      </nav>
+
+      <div class="rail-section">
+        <div class="section-head compact">
+          <h2>การทำงานด่วน</h2>
+          <span>งานระบบ</span>
+        </div>
+        <button class="ghost-btn block" id="quickCreateCourse" type="button">คอร์สใหม่</button>
+        <button class="ghost-btn block" id="quickImportStudents" type="button">นำเข้า</button>
+        <button class="ghost-btn block" id="quickSendAnnouncement" type="button">ประกาศ</button>
+      </div>
+
+      <div class="rail-section">
+        <div class="section-head compact">
+          <h2>บัญชีองค์กร</h2>
+          <span id="adminTenantBadge">กำลังโหลด</span>
+        </div>
+        <label class="field compact">
+          <span>คอร์สที่ใช้งานอยู่</span>
+          <select id="courseSelector"></select>
+        </label>
+        <label class="field compact">
+          <span>ฐานความรู้</span>
+          <select id="knowledgeBaseSelector"></select>
+        </label>
+      </div>
+    </aside>
+
+    <section class="workspace-stack">
+      <section class="workspace-top card">
+        <div class="workspace-top-copy">
+          <span class="eyebrow" id="adminWorkspaceEyebrow">แอปแอดมิน</span>
+          <h2 id="adminWorkspaceTitle">แดชบอร์ด</h2>
+          <p id="adminWorkspaceDescription">มุมมองรวมสำหรับติดตามคอร์ส นักเรียน การเงิน และฐานความรู้ โดยยังคงพื้นที่ทำงานหลักให้โล่งและอ่านง่าย</p>
+        </div>
+        <div class="workspace-top-actions">
+          <div class="status-badge" id="adminSessionStatus">รอการลงชื่อเข้าใช้</div>
+          <button class="secondary-btn" id="openStudentPreviewButton" type="button">ดูตัวอย่างนักเรียน</button>
+        </div>
+      </section>
+
+      <section class="view-grid">
+        <article class="view card active" data-view-panel="dashboard">
+          <div class="section-head">
+            <h2>แดชบอร์ด</h2>
+            <span>ภาพรวม</span>
+          </div>
+          <div class="dashboard-card-grid">
+            <article class="stat-panel">
+              <span class="label">กำลังใช้งาน</span>
+              <strong id="adminDashboardActive">--</strong>
+              <p>นักเรียนที่กำลังเรียนหรืออยู่ในช่วงทดลอง</p>
+            </article>
+            <article class="stat-panel">
+              <span class="label">กำลังหมดอายุ</span>
+              <strong id="adminDashboardExpiring">--</strong>
+              <p>ระบบเตือนต่ออายุถูกจัดคิวไว้แล้ว</p>
+            </article>
+            <article class="stat-panel">
+              <span class="label">ต่ออายุวันนี้</span>
+              <strong id="adminDashboardRenewals">--</strong>
+              <p>รายการติดตามการจ่ายพร้อมให้ทีมทำงานต่อ</p>
+            </article>
+          </div>
+        </article>
+
+        <article class="view card" data-view-panel="builder">
+          <div class="section-head">
+            <h2>ตัวสร้างคอร์ส</h2>
+            <span>โครงสร้าง, ไฟล์, และตัวอย่าง</span>
+          </div>
+          <div class="inline-actions" style="margin-bottom: 12px;">
+            <button class="secondary-btn" id="openStudentPreviewButton" type="button">ดูตัวอย่างนักเรียน</button>
+          </div>
+          <course-builder-editor id="courseBuilderEditor"></course-builder-editor>
+        </article>
+
+        <article class="view card" data-view-panel="students">
+          <div class="section-head">
+            <h2>นักเรียน</h2>
+            <span>จัดการกลุ่มเรียน</span>
+          </div>
+          <div class="student-table" id="adminStudentTable"></div>
+        </article>
+
+        <article class="view card" data-view-panel="finance">
+          <div class="section-head">
+            <h2>การเงิน</h2>
+            <span>สัญญาณการรับเงิน</span>
+          </div>
+          <div class="finance-grid compact">
+            <article class="finance-card accent">
+              <span class="label">รายได้วันนี้</span>
+              <strong id="adminRevenueToday">--</strong>
+              <p id="adminRevenueSource">พร้อมเพย์ โอนธนาคาร บัตร</p>
+            </article>
+            <article class="finance-card">
+              <span class="label">เดือนนี้</span>
+              <strong id="adminMonthRevenue">--</strong>
+              <p>ยอดต่ออายุและนักเรียนใหม่ไหลต่อเนื่อง</p>
+            </article>
+            <article class="finance-card">
+              <span class="label">คืนเงิน</span>
+              <strong id="adminRefundRate">--</strong>
+              <p>คุมให้น้อยด้วย onboarding และการเตือนที่ชัด</p>
+            </article>
+          </div>
+        </article>
+
+        <article class="view card" data-view-panel="knowledge">
+          <div class="section-head">
+            <h2>ฐานความรู้</h2>
+            <span>เอกสาร</span>
+          </div>
+          <div class="docs-card">
+            <div class="docs-head">
+              <div>
+                <span class="label">เอกสาร</span>
+                <strong id="adminKbDocumentsTitle">กำลังโหลด…</strong>
+              </div>
+              <button class="ghost-btn" id="refreshKbDocuments" type="button">รีเฟรช</button>
+            </div>
+            <div class="docs-list" id="adminKbDocumentsList"></div>
+          </div>
+        </article>
+
+        <article class="view card" data-view-panel="settings">
+          <div class="section-head">
+            <h2>ตั้งค่า</h2>
+            <span>บัญชีองค์กร และเซสชัน</span>
+          </div>
+          <div class="notes">
+            <h3>เซสชัน</h3>
+            <p id="adminSessionDetails">ยังไม่มีเซสชัน</p>
+            <h3>ขั้นตอนถัดไป</h3>
+            <ul class="next-steps">
+              <li>เชื่อมคำสั่งเผยแพร่ของคอร์สจริง</li>
+              <li>เพิ่ม flow นำเข้าและกรองนักเรียน</li>
+              <li>ขยายหน้าการเงินและ reconciliation</li>
+            </ul>
+          </div>
+          <div class="docs-card" style="margin-top: 1rem;">
+            <div class="docs-head">
+              <div>
+                <span class="label">หน้าเว็บหลัก</span>
+                <strong id="landingPageTitle">index.html ของบัญชีองค์กร</strong>
+              </div>
+              <a class="ghost-btn" id="openLandingPageButton" href="#" target="_blank" rel="noreferrer">เปิดหน้าสาธารณะ</a>
+            </div>
+            <div class="url-grid" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:12px;">
+              <div class="preview-box">
+                <span class="label">ลิงก์สาธารณะ</span>
+                <strong id="adminPublicUrl">--</strong>
+                <small>หน้า landing ของบัญชีองค์กร</small>
+                <button class="ghost-btn" id="copyPublicUrlButton" type="button" style="margin-top:10px;">คัดลอกลิงก์สาธารณะ</button>
+              </div>
+              <div class="preview-box">
+                <span class="label">ลิงก์สมัครเรียน</span>
+                <strong id="adminEnrollUrl">--</strong>
+                <small>ลิงก์สมัครเรียนของ tenant นี้</small>
+                <button class="ghost-btn" id="copyEnrollUrlButton" type="button" style="margin-top:10px;">คัดลอกลิงก์สมัครเรียน</button>
+              </div>
+            </div>
+            <div class="docs-form">
+              <textarea id="landingHtmlCode" rows="14" placeholder="วาง HTML หน้าเดียวที่นี่ แล้วกดบันทึกเป็น index.html"></textarea>
+              <div class="inline-actions">
+                <button class="primary-btn" id="saveLandingHtmlButton" type="button">บันทึกเป็น index.html</button>
+                <button class="secondary-btn" id="previewLandingHtmlButton" type="button">ดูตัวอย่าง</button>
+              </div>
+              <iframe id="landingHtmlPreview" title="ตัวอย่างหน้า public" style="width:100%;min-height:420px;border:1px solid rgba(15,23,42,.08);border-radius:16px;background:#fff;"></iframe>
+              <p class="auth-note" id="landingPageNote">ระบบจะบันทึกหน้าสาธารณะของบัญชีองค์กรนี้เป็น index.html</p>
+            </div>
+          </div>
+        </article>
+      </section>
+    </section>
+
+    <aside class="right-rail card">
+      <div class="rail-section">
+        <div class="section-head compact">
+          <h2>สถานะระบบ</h2>
+          <span>ภาพรวม</span>
+        </div>
+        <div class="insight-card accent">
+          <span class="label">ภาระ AI tutor</span>
+          <strong id="adminAiLoad">กำลังโหลด</strong>
+          <small id="adminAiLoadNote">ดึงจากฐานความรู้ของบัญชีองค์กรเท่านั้น</small>
+        </div>
+        <div class="insight-card">
+          <span class="label">ต่ออายุที่รอดำเนินการ</span>
+          <strong id="adminPendingRenewals">--</strong>
+          <small id="adminPendingRenewalsNote">ตั้งเตือนไว้อัตโนมัติแล้ว</small>
+        </div>
+        <div class="insight-card">
+          <span class="label">คอร์สที่เผยแพร่</span>
+          <strong id="adminPublishedCount">--</strong>
+          <small>ซิงก์โครงสร้างคอร์สไปยังพรีวิวแล้ว</small>
+        </div>
+      </div>
+
+      <div class="rail-section docs-actions">
+        <div class="section-head compact">
+          <h2>เอกสารฐานความรู้</h2>
+          <span>จัดการ</span>
+        </div>
+        <div class="docs-editor">
+          <div class="docs-form">
+            <input id="kbDocTitle" type="text" placeholder="ชื่อเอกสาร" />
+            <select id="kbDocSource">
+              <option value="note">note</option>
+              <option value="pdf">pdf</option>
+              <option value="docx">docx</option>
+              <option value="slide">slide</option>
+              <option value="transcript">transcript</option>
+              <option value="html">html</option>
+            </select>
+            <input id="kbDocFileUrl" type="url" placeholder="URL ของไฟล์หรือแหล่งที่มา" />
+            <textarea id="kbDocExtractedText" rows="4" placeholder="ข้อความที่ดึงมา หรือวางเนื้อหา"></textarea>
+            <button class="primary-btn block" id="createKbDocument" type="button">เพิ่มเอกสาร</button>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <script type="module" src="/components/course-builder.js"></script>
+  <script src="/app-data.js"></script>
+  <script>
+    (() => {
+      const authScreen = document.getElementById('authScreen');
+      const topbar = document.getElementById('adminTopbar');
+      const shell = document.getElementById('adminShell');
+      const loginForm = document.getElementById('adminLoginForm');
+      const loginSubmit = document.getElementById('adminLoginSubmit');
+      const demoLoginButton = document.getElementById('adminDemoLogin');
+      const logoutButton = document.getElementById('adminLogout');
+      const sessionPill = document.getElementById('adminSessionPill');
+      const sessionStatus = document.getElementById('adminSessionStatus');
+      const workspaceEyebrow = document.getElementById('adminWorkspaceEyebrow');
+      const workspaceTitle = document.getElementById('adminWorkspaceTitle');
+      const workspaceDescription = document.getElementById('adminWorkspaceDescription');
+      const sessionDetails = document.getElementById('adminSessionDetails');
+      const adminTenantBadge = document.getElementById('adminTenantBadge');
+      const publishButton = document.getElementById('publishChangesButton');
+      const themeToggleButton = document.getElementById('themeToggleButton');
+      const menuButtons = Array.from(document.querySelectorAll('.menu-item'));
+      const views = Array.from(document.querySelectorAll('[data-view-panel]'));
+      const courseBuilder = document.getElementById('courseBuilderEditor');
+      const courseSelector = document.getElementById('courseSelector');
+      const knowledgeBaseSelector = document.getElementById('knowledgeBaseSelector');
+      const studentTable = document.getElementById('adminStudentTable');
+      const kbDocumentsTitle = document.getElementById('adminKbDocumentsTitle');
+      const kbDocumentsList = document.getElementById('adminKbDocumentsList');
+      const refreshKbDocumentsButton = document.getElementById('refreshKbDocuments');
+      const quickCreateCourse = document.getElementById('quickCreateCourse');
+      const quickImportStudents = document.getElementById('quickImportStudents');
+      const quickSendAnnouncement = document.getElementById('quickSendAnnouncement');
+      const openStudentPreviewButton = document.getElementById('openStudentPreviewButton');
+      const adminAuthNote = document.getElementById('adminAuthNote');
+      const kbDocTitle = document.getElementById('kbDocTitle');
+      const kbDocFileUrl = document.getElementById('kbDocFileUrl');
+      const createKbDocumentButton = document.getElementById('createKbDocument');
+      const landingHtmlCode = document.getElementById('landingHtmlCode');
+      const saveLandingHtmlButton = document.getElementById('saveLandingHtmlButton');
+      const previewLandingHtmlButton = document.getElementById('previewLandingHtmlButton');
+      const landingPageNote = document.getElementById('landingPageNote');
+      const openLandingPageButton = document.getElementById('openLandingPageButton');
+      const landingPageTitle = document.getElementById('landingPageTitle');
+      const landingHtmlPreview = document.getElementById('landingHtmlPreview');
+      const courseBuilderPreviewTarget = new URL('/student-app.html?preview=1', window.location.origin).toString();
+      const adminPublicUrl = document.getElementById('adminPublicUrl');
+      const adminEnrollUrl = document.getElementById('adminEnrollUrl');
+      const copyPublicUrlButton = document.getElementById('copyPublicUrlButton');
+      const copyEnrollUrlButton = document.getElementById('copyEnrollUrlButton');
+      const THEME_STORAGE_KEY = 'coursechic-admin-theme';
+
+      const refs = {
+        metricStudents: document.getElementById('adminMetricStudents'),
+        metricRenewal: document.getElementById('adminMetricRenewal'),
+        metricCourses: document.getElementById('adminMetricCourses'),
+        todayLessons: document.getElementById('adminTodayLessons'),
+        todayLessonsNote: document.getElementById('adminTodayLessonsNote'),
+        billingValue: document.getElementById('adminBillingValue'),
+        billingNote: document.getElementById('adminBillingNote'),
+        aiReplies: document.getElementById('adminAiReplies'),
+        aiRepliesNote: document.getElementById('adminAiRepliesNote'),
+        revenueToday: document.getElementById('adminRevenueToday'),
+        revenueSource: document.getElementById('adminRevenueSource'),
+        aiLoad: document.getElementById('adminAiLoad'),
+        aiLoadNote: document.getElementById('adminAiLoadNote'),
+        pendingRenewals: document.getElementById('adminPendingRenewals'),
+        pendingRenewalsNote: document.getElementById('adminPendingRenewalsNote'),
+        dashboardActive: document.getElementById('adminDashboardActive'),
+        dashboardExpiring: document.getElementById('adminDashboardExpiring'),
+        dashboardRenewals: document.getElementById('adminDashboardRenewals'),
+        monthRevenue: document.getElementById('adminMonthRevenue'),
+        refundRate: document.getElementById('adminRefundRate'),
+        publishedCount: document.getElementById('adminPublishedCount'),
+      };
+
+      let lastLoadedData = null;
+      let currentPublicUrl = '#';
+      let currentEnrollUrl = '#';
+      let selectedView = window.CourseChic.getUiView?.('adminView', 'dashboard') || 'dashboard';
+      const interactiveControls = [
+        publishButton,
+        refreshKbDocumentsButton,
+        quickCreateCourse,
+        quickImportStudents,
+        quickSendAnnouncement,
+        courseSelector,
+        knowledgeBaseSelector,
+        createKbDocumentButton,
+        saveLandingHtmlButton,
+        previewLandingHtmlButton,
+      ];
+
+      const renderLandingPreview = (html) => {
+        const preview = String(html || '').trim() || '<!doctype html><html><body style="font-family:Inter,sans-serif;padding:24px;color:#112033">วาง HTML แล้วกดดู preview</body></html>';
+        landingHtmlPreview.srcdoc = preview;
+      };
+
+      const setLandingNote = (message, kind = '') => {
+        landingPageNote.className = kind ? `auth-note ${kind}` : 'auth-note';
+        landingPageNote.textContent = message;
+      };
+
+      const copyText = async (value, label) => {
+        try {
+          await navigator.clipboard.writeText(value);
+          setLandingNote(`${label} คัดลอกแล้ว`, 'success');
+        } catch {
+          setLandingNote(`คัดลอก ${label} ไม่สำเร็จ`, 'error');
+        }
+      };
+
+      const setAuthNote = (message, kind = '') => {
+        adminAuthNote.className = kind ? `auth-note ${kind}` : 'auth-note';
+        adminAuthNote.textContent = message;
+      };
+
+      const setText = (node, value) => {
+        if (node) node.textContent = value;
+      };
+
+      const getPreferredTheme = () => {
+        const saved = window.localStorage.getItem(THEME_STORAGE_KEY);
+        if (saved === 'dark' || saved === 'light') return saved;
+        return 'dark';
+      };
+
+      const applyTheme = (theme) => {
+        const resolvedTheme = theme === 'dark' ? 'dark' : 'light';
+        document.body.classList.toggle('theme-dark', resolvedTheme === 'dark');
+        if (themeToggleButton) {
+          themeToggleButton.setAttribute('aria-pressed', resolvedTheme === 'dark' ? 'true' : 'false');
+          themeToggleButton.textContent = resolvedTheme === 'dark' ? 'Light mode' : 'Dark mode';
+        }
+      };
+
+      const toggleTheme = () => {
+        const nextTheme = document.body.classList.contains('theme-dark') ? 'light' : 'dark';
+        window.localStorage.setItem(THEME_STORAGE_KEY, nextTheme);
+        applyTheme(nextTheme);
+      };
+
+      const isLoginReady = () => {
+        const email = document.getElementById('adminEmail');
+        const password = document.getElementById('adminPassword');
+        return Boolean(email.value.trim() && email.checkValidity() && password.value);
+      };
+
+      const setView = (view) => {
+        selectedView = view;
+        window.CourseChic.setUiView?.('adminView', view);
+        menuButtons.forEach((button) => button.classList.toggle('active', button.dataset.view === view));
+        views.forEach((panel) => panel.classList.toggle('active', panel.dataset.viewPanel === view));
+        const titles = {
+        dashboard: ['แอปแอดมิน', 'แดชบอร์ด', 'ภาพรวมสถานะงานและตัวชี้วัดหลักของบัญชีองค์กร'],
+          builder: ['ตัวสร้างคอร์ส', 'ตัวสร้างคอร์ส', 'จัดโครงบทเรียน แก้เนื้อหา และดูตัวอย่างงานที่กำลังทำ'],
+          students: ['นักเรียน', 'จัดการนักเรียน', 'ติดตามสถานะนักเรียนและการจัดกลุ่มเรียนแบบเร็ว'],
+          finance: ['การเงิน', 'การเงิน', 'ดูรายรับ การต่ออายุ และจุดที่ต้องติดตามต่อ'],
+          knowledge: ['ฐานความรู้', 'ฐานความรู้', 'จัดเอกสารที่ใช้ตอบคำถามและช่วย AI tutor'],
+          settings: ['ตั้งค่า', 'ตั้งค่า', 'จัดการ session, URL, และ landing page ของบัญชีองค์กร'],
+        };
+        const meta = titles[view] || titles.dashboard;
+        if (workspaceEyebrow) workspaceEyebrow.textContent = meta[0];
+        if (workspaceTitle) workspaceTitle.textContent = meta[1];
+        if (workspaceDescription) workspaceDescription.textContent = meta[2];
+      };
+
+      const showApp = () => {
+        authScreen.classList.add('hidden');
+        topbar.classList.remove('app-hidden');
+        shell.classList.remove('app-hidden');
+        interactiveControls.forEach((control) => {
+          if (control) control.disabled = false;
+        });
+      };
+
+      const showAuth = () => {
+        authScreen.classList.remove('hidden');
+        topbar.classList.add('app-hidden');
+        shell.classList.add('app-hidden');
+        interactiveControls.forEach((control) => {
+          if (control) control.disabled = true;
+        });
+        setText(sessionPill, 'ยังไม่เชื่อมต่อ');
+        setText(sessionStatus, 'รอการลงชื่อเข้าใช้');
+        setText(sessionDetails, 'ยังไม่มี session');
+        studentTable.innerHTML = '<div class="empty-state">ลงชื่อเข้าใช้เพื่อโหลดนักเรียน</div>';
+        setText(kbDocumentsTitle, 'กำลังโหลด…');
+        kbDocumentsList.innerHTML = '<div class="empty-state">ลงชื่อเข้าใช้เพื่อโหลดเอกสาร</div>';
+        courseSelector.innerHTML = '<option value="">ลงชื่อเข้าใช้ก่อน</option>';
+        knowledgeBaseSelector.innerHTML = '<option value="">ลงชื่อเข้าใช้ก่อน</option>';
+        loginSubmit.disabled = !isLoginReady();
+      };
+
+      const renderStudents = (students) => {
+        if (!studentTable) return;
+        const rows = students.map((student) => {
+          const tagClass = student.status === 'Active' ? 'ok' : student.status === 'Expiring' ? 'warn' : 'danger';
+          return `
+            <div class="row">
+              <span>
+                <strong class="student-name">${student.name}</strong>
+                <small class="student-meta">${student.email}</small>
+              </span>
+              <span class="tag ${tagClass}">${student.status}</span>
+              <span>${new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: 'short' }).format(new Date(student.renewalDue))}</span>
+            </div>
+          `;
+        }).join('');
+
+        studentTable.innerHTML = `
+          <div class="row head">
+            <span>นักเรียน</span><span>สถานะ</span><span>ต่ออายุ</span>
+          </div>
+          ${rows || '<div class="empty-state">ยังไม่มีนักเรียน</div>'}
+        `;
+      };
+
+      const renderKnowledgeBaseDocuments = (data) => {
+        const kb = data.selectedKnowledgeBase;
+        const items = data.selectedKnowledgeBaseDocuments || [];
+        setText(kbDocumentsTitle, kb ? `${kb.name} • ${items.length} เอกสาร` : 'ยังไม่ได้เลือกฐานความรู้');
+        kbDocumentsList.innerHTML = items.length
+          ? items.map((doc) => `
+              <div class="doc-row">
+                <div class="doc-main">
+                  <strong>${doc.title}</strong>
+                  <small>${doc.sourceType} • ${doc.status}${doc.fileUrl ? ` • ${doc.fileUrl}` : ''}</small>
+                </div>
+              </div>
+            `).join('')
+          : '<div class="empty-state">ยังไม่มีเอกสารในฐานความรู้นี้</div>';
+      };
+
+      const applyAdminData = async () => {
+        setText(sessionStatus, 'กำลังโหลด workspace...');
+        interactiveControls.forEach((control) => {
+          if (control) control.disabled = true;
+        });
+        const data = await window.CourseChic.loadAdminDashboard();
+        lastLoadedData = data;
+        await window.customElements.whenDefined?.('course-builder-editor');
+        showApp();
+        setText(sessionPill, `${data.user.name} • ${data.tenant.name}`);
+        setText(sessionStatus, `เชื่อมต่อกับ ${data.tenant.slug}`);
+        setText(sessionDetails, `${data.user.email} · บทบาท ${data.user.role} · บัญชีองค์กร ${data.tenant.name}`);
+        currentPublicUrl = `https://${data.tenant.slug}.coursechic.com/`;
+        currentEnrollUrl = `https://${data.tenant.slug}.coursechic.com/enroll`;
+        setText(adminPublicUrl, currentPublicUrl);
+        setText(adminEnrollUrl, currentEnrollUrl);
+        setText(adminTenantBadge, `${data.license.plan} แผน • ${data.features.white_label_branding ? 'เปิด white label' : 'ปิด white label'}`);
+        setText(refs.metricStudents, data.students.summary.active);
+        setText(refs.metricRenewal, `${Math.round((data.students.summary.active / Math.max(data.students.summary.total, 1)) * 100)}%`);
+        setText(refs.metricCourses, data.courses.length);
+        setText(refs.todayLessons, `${data.selectedCourse.modules.length} บทเรียนเผยแพร่`);
+        setText(refs.todayLessonsNote, `${data.knowledgeBases.length} ฐานความรู้พร้อมใช้งาน`);
+        setText(refs.billingValue, `฿${(data.courses.length * 12450).toLocaleString('en-US')}`);
+        setText(refs.billingNote, 'รายรับเดือนนี้');
+        setText(refs.aiReplies, `${Math.max(24, data.students.summary.total * 6)} คำตอบ`);
+        setText(refs.aiRepliesNote, 'ผู้ช่วยแบบค้นคืนก่อน');
+        setText(refs.revenueToday, `฿${(data.students.summary.active * 725).toLocaleString('en-US')}`);
+        setText(refs.revenueSource, 'PromptPay, โอนธนาคาร, บัตร');
+        setText(refs.aiLoad, data.features.ai_quiz_generation ? 'warm' : 'idle');
+        setText(refs.aiLoadNote, 'ดึงจากฐานความรู้ของบัญชีองค์กรเท่านั้น');
+        setText(refs.pendingRenewals, `${data.students.summary.expiring + data.students.summary.expired} คน`);
+        setText(refs.pendingRenewalsNote, 'ตั้งเตือนไว้อัตโนมัติแล้ว');
+        setText(refs.dashboardActive, data.students.summary.active);
+        setText(refs.dashboardExpiring, data.students.summary.expiring);
+        setText(refs.dashboardRenewals, data.students.summary.expired);
+        setText(refs.monthRevenue, `฿${(data.courses.length * 248900 / 10).toLocaleString('en-US')}`);
+        setText(refs.refundRate, '0.8%');
+        setText(refs.publishedCount, data.selectedCourse.modules.length);
+        if (courseBuilder?.setCourse) {
+          courseBuilder.setCourse(data.selectedCourse);
+        }
+        courseSelector.innerHTML = (data.courses || []).map((course) => `<option value="${course.id}" ${String(course.id) === String(data.selectedCourseId) ? 'selected' : ''}>${course.title}</option>`).join('');
+        knowledgeBaseSelector.innerHTML = (data.knowledgeBases || []).map((kb) => `<option value="${kb.id}" ${String(kb.id) === String(data.selectedKnowledgeBaseId) ? 'selected' : ''}>${kb.name}</option>`).join('');
+        renderStudents(data.students.items);
+        renderKnowledgeBaseDocuments(data);
+        await loadLandingPageEditor();
+      };
+
+      const showAppError = (message) => {
+        const text = message || 'โหลดข้อมูล workspace ไม่สำเร็จ';
+        setText(sessionStatus, text);
+        setText(sessionPill, text);
+        setAuthNote(text, 'error');
+        authScreen.classList.add('hidden');
+        topbar.classList.remove('app-hidden');
+        shell.classList.remove('app-hidden');
+        interactiveControls.forEach((control) => {
+          if (control) control.disabled = false;
+        });
+      };
+
+      const loadLandingPageEditor = async () => {
+        try {
+          const response = await window.CourseChic.request('/api/landing-pages/html');
+          landingHtmlCode.value = response.html || '';
+          openLandingPageButton.href = response.url || currentPublicUrl || '#';
+          renderLandingPreview(response.html || '');
+          landingPageTitle.textContent = response.exists ? 'แก้ไขหน้า public ที่มีอยู่' : 'สร้างหน้า public ใหม่';
+          setLandingNote(response.exists ? 'โหลด landing page เดิมแล้ว' : 'ยังไม่มี landing page ให้ใช้');
+        } catch (error) {
+          setLandingNote(error.message, 'error');
+        }
+      };
+
+      loginForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        if (!isLoginReady()) {
+          setAuthNote('ตรวจ Gmail และรหัสผ่าน', 'error');
+          return;
+        }
+        loginSubmit.disabled = true;
+        setAuthNote('กำลังลงชื่อเข้าใช้...');
+        authScreen.classList.add('is-loading');
+        try {
+          await window.CourseChic.login({
+            email: document.getElementById('adminEmail').value.trim(),
+            password: document.getElementById('adminPassword').value,
+          });
+          await applyAdminData();
+          setAuthNote('ลงชื่อเข้าใช้แล้ว', 'success');
+        } catch (error) {
+          setAuthNote(error.message, 'error');
+        } finally {
+          authScreen.classList.remove('is-loading');
+          loginSubmit.disabled = false;
+        }
+      });
+
+      demoLoginButton.addEventListener('click', async () => {
+        loginSubmit.disabled = true;
+        setAuthNote('กำลังโหลดบัญชีสาธิต...');
+        authScreen.classList.add('is-loading');
+        try {
+          await window.CourseChic.login({
+            email: 'lungteelek@gmail.com',
+            password: 'password123',
+          });
+          await applyAdminData();
+          setAuthNote('ลงชื่อเข้าใช้ด้วยบัญชีสาธิตแล้ว', 'success');
+        } catch (error) {
+          setAuthNote(error.message, 'error');
+        } finally {
+          authScreen.classList.remove('is-loading');
+          loginSubmit.disabled = false;
+        }
+      });
+
+      themeToggleButton?.addEventListener('click', toggleTheme);
+      applyTheme(getPreferredTheme());
+
+      logoutButton.addEventListener('click', () => {
+        window.CourseChic.logout();
+        showAuth();
+      });
+
+      menuButtons.forEach((button) => button.addEventListener('click', () => setView(button.dataset.view)));
+
+      courseSelector.addEventListener('change', async () => {
+        if (!courseSelector.value) return;
+        window.CourseChic.updateSessionSelection?.({ lastSelectedCourseId: courseSelector.value });
+        await applyAdminData();
+      });
+
+      knowledgeBaseSelector.addEventListener('change', async () => {
+        if (!knowledgeBaseSelector.value) return;
+        window.CourseChic.updateSessionSelection?.({ lastSelectedKnowledgeBaseId: knowledgeBaseSelector.value });
+        await applyAdminData();
+      });
+
+      refreshKbDocumentsButton.addEventListener('click', applyAdminData);
+      quickCreateCourse.addEventListener('click', () => setView('builder'));
+      quickImportStudents.addEventListener('click', () => setView('students'));
+      quickSendAnnouncement.addEventListener('click', () => setView('settings'));
+      publishButton.addEventListener('click', () => setView('builder'));
+      openStudentPreviewButton.addEventListener('click', () => {
+        const previewUrl = new URL('/student-app.html?preview=1', window.location.origin);
+        window.open(previewUrl.toString(), '_blank', 'noopener,noreferrer');
+      });
+
+      document.getElementById('createKbDocument').addEventListener('click', async () => {
+        const kbId = knowledgeBaseSelector.value;
+        const title = kbDocTitle.value.trim();
+        const sourceType = document.getElementById('kbDocSource').value;
+        const fileUrl = kbDocFileUrl.value.trim();
+        const extractedText = document.getElementById('kbDocExtractedText').value.trim();
+        if (!kbId) {
+          setAuthNote('เลือกฐานความรู้ก่อน', 'error');
+          return;
+        }
+        if (!title) {
+          setAuthNote('กรอกชื่อเอกสารก่อน', 'error');
+          return;
+        }
+        if (!fileUrl) {
+          setAuthNote('กรอก URL ของไฟล์หรือแหล่งที่มาก่อน', 'error');
+          return;
+        }
+        createKbDocumentButton.disabled = true;
+        setAuthNote('กำลังบันทึกเอกสารฐานความรู้...');
+        try {
+          await window.CourseChic.requestNest(`/knowledge-bases/${kbId}/documents`, {
+            method: 'POST',
+            body: JSON.stringify({ sourceType, title, fileUrl, extractedText }),
+          });
+          kbDocTitle.value = '';
+          kbDocFileUrl.value = '';
+          document.getElementById('kbDocExtractedText').value = '';
+          await applyAdminData();
+          setAuthNote('เพิ่มเอกสารแล้ว', 'success');
+        } catch (error) {
+          setAuthNote(error.message, 'error');
+        } finally {
+          createKbDocumentButton.disabled = false;
+        }
+      });
+
+      saveLandingHtmlButton.addEventListener('click', async () => {
+        const html = landingHtmlCode.value.trim();
+        if (!html) {
+          setLandingNote('วาง HTML ก่อน', 'error');
+          return;
+        }
+        saveLandingHtmlButton.disabled = true;
+        setLandingNote('กำลังบันทึก index.html...');
+        try {
+          const response = await window.CourseChic.request('/api/landing-pages/html', {
+            method: 'POST',
+            body: JSON.stringify({ html }),
+          });
+          openLandingPageButton.href = response.url || '#';
+          landingPageTitle.textContent = 'บันทึกหน้า public แล้ว';
+          setLandingNote(`บันทึกเรียบร้อย เปิดดูได้ที่ ${response.url}`, 'success');
+        } catch (error) {
+          setLandingNote(error.message, 'error');
+        } finally {
+          saveLandingHtmlButton.disabled = false;
+        }
+      });
+
+      previewLandingHtmlButton.addEventListener('click', () => {
+        const html = landingHtmlCode.value.trim();
+        if (!html) {
+          setLandingNote('วาง HTML ก่อน', 'error');
+          return;
+        }
+        renderLandingPreview(html);
+        setLandingNote('แสดง preview แล้ว', 'success');
+      });
+
+      courseBuilder?.addEventListener?.('course-builder:save', () => {
+        setLandingNote(`บันทึกตัวสร้างคอร์สแล้ว เปิด preview ได้ที่ ${courseBuilderPreviewTarget}`, 'success');
+      });
+
+      copyPublicUrlButton.addEventListener('click', () => {
+        if (!currentPublicUrl || currentPublicUrl === '#') return;
+        copyText(currentPublicUrl, 'Public URL');
+      });
+
+      copyEnrollUrlButton.addEventListener('click', () => {
+        if (!currentEnrollUrl || currentEnrollUrl === '#') return;
+        copyText(currentEnrollUrl, 'Enroll URL');
+      });
+
+      [document.getElementById('adminEmail'), document.getElementById('adminPassword')].forEach((field) => {
+        field.addEventListener('input', () => {
+          if (loginSubmit.disabled) return;
+          loginSubmit.disabled = !isLoginReady();
+        });
+      });
+
+      if (window.CourseChic.hasSession()) {
+        showApp();
+        applyAdminData().catch((error) => showAppError(error.message));
+      } else {
+        showAuth();
+      }
+
+      setView(selectedView);
+      loginSubmit.disabled = !isLoginReady();
+    })();
+  </script>
+</body>
+</html>

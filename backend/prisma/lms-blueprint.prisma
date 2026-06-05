@@ -1,0 +1,689 @@
+generator client {
+  provider = "prisma-client-js"
+  engineType = "binary"
+  output   = "../generated/lms-client"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum TenantMode {
+  SAAS
+  SELF_HOSTED
+}
+
+enum TenantStatus {
+  ACTIVE
+  SUSPENDED
+  ARCHIVED
+}
+
+enum MembershipRole {
+  OWNER
+  ADMIN
+  TUTOR
+  STUDENT
+}
+
+enum MembershipStatus {
+  ACTIVE
+  INVITED
+  DISABLED
+}
+
+enum LicenseStatus {
+  TRIAL
+  ACTIVE
+  EXPIRED
+  SUSPENDED
+}
+
+enum CourseStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum LessonNodeType {
+  SECTION
+  LESSON
+  QUIZ
+  ASSIGNMENT
+}
+
+enum LessonContentType {
+  VIDEO
+  ARTICLE
+  PDF
+  EXTERNAL_LINK
+  MIXED
+}
+
+enum LessonAssetType {
+  PDF
+  LINK
+  IMAGE
+  ATTACHMENT
+}
+
+enum VideoProvider {
+  MUX
+  CLOUDFLARE
+  CUSTOM
+}
+
+enum ProcessingStatus {
+  UPLOADING
+  PROCESSING
+  READY
+  FAILED
+}
+
+enum EnrollmentStatus {
+  ACTIVE
+  EXPIRING
+  EXPIRED
+  CANCELLED
+}
+
+enum ProgressStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum PlannerStatus {
+  DRAFT
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum PlannerSource {
+  AI
+  MANUAL
+  HYBRID
+}
+
+enum NotificationChannel {
+  PUSH
+  EMAIL
+  IN_APP
+}
+
+enum NotificationType {
+  STUDY_REMINDER
+  RENEWAL
+  ANNOUNCEMENT
+  PAYMENT
+  SYSTEM
+}
+
+enum NotificationStatus {
+  SCHEDULED
+  SENT
+  DELIVERED
+  FAILED
+  READ
+}
+
+enum KnowledgeBaseVisibility {
+  COURSE_ONLY
+  TENANT_WIDE
+}
+
+enum KnowledgeBaseSourceType {
+  PDF
+  DOCX
+  SLIDE
+  TRANSCRIPT
+  NOTE
+  HTML
+}
+
+enum ChatMode {
+  TUTOR
+  SUMMARY
+  EXERCISE
+}
+
+enum ChatMessageRole {
+  SYSTEM
+  USER
+  ASSISTANT
+  TOOL
+}
+
+enum PaymentGateway {
+  OMISE
+  TWO_C_TWO_P
+  BANK_TRANSFER
+  OTHER
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+  CANCELLED
+}
+
+model Tenant {
+  id                BigInt               @id @default(autoincrement())
+  name              String
+  slug              String               @unique
+  mode              TenantMode           @default(SAAS)
+  status            TenantStatus         @default(ACTIVE)
+  timezone          String               @default("Asia/Bangkok")
+  locale            String               @default("th-TH")
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+  memberships       TenantMembership[]
+  licenses          License[]
+  featureFlags      FeatureFlag[]
+  courses           Course[]
+  lessonNodes       LessonNode[]
+  enrollments       Enrollment[]
+  knowledgeBases    KnowledgeBase[]
+  payments          Payment[]
+  kbChunks          KbChunk[]
+  auditLogs         AuditLog[]
+}
+
+model User {
+  id                 BigInt               @id @default(autoincrement())
+  email              String               @unique
+  phone              String?
+  fullName           String
+  avatarUrl          String?
+  birthDate          DateTime?
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+  profile            UserProfile?
+  oauthAccounts      OauthAccount[]
+  refreshTokens      RefreshToken[]
+  memberships        TenantMembership[]
+  teachingCourses    CourseInstructor[]
+  enrollments        Enrollment[]
+  playbackSessions   PlaybackSession[]
+  studyAvailability  StudyAvailability[]
+  studyPlans         StudyPlan[]
+  notificationDevices NotificationDevice[]
+  notificationRules  NotificationRule[]
+  notifications      Notification[]
+  aiChatSessions     AiChatSession[]
+  payments           Payment[]
+  auditLogs          AuditLog[]
+}
+
+model UserProfile {
+  userId        BigInt   @id
+  addressLine1  String?
+  addressLine2  String?
+  district      String?
+  province      String?
+  postalCode    String?
+  country       String?  @default("TH")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model OauthAccount {
+  id             BigInt   @id @default(autoincrement())
+  userId         BigInt
+  provider       String
+  providerUserId String
+  email          String?
+  createdAt      DateTime @default(now())
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerUserId])
+}
+
+model RefreshToken {
+  id         BigInt   @id @default(autoincrement())
+  userId     BigInt
+  tokenHash  String
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model TenantMembership {
+  id         BigInt            @id @default(autoincrement())
+  tenantId   BigInt
+  userId     BigInt
+  role       MembershipRole
+  status     MembershipStatus  @default(ACTIVE)
+  joinedAt   DateTime          @default(now())
+  tenant     Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user       User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, userId])
+}
+
+model License {
+  id            BigInt         @id @default(autoincrement())
+  tenantId      BigInt
+  planCode      String
+  licenseKey    String?
+  seats         Int?
+  expiresAt     DateTime?
+  status        LicenseStatus  @default(TRIAL)
+  isSelfHosted  Boolean        @default(false)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+}
+
+model FeatureFlag {
+  id          BigInt   @id @default(autoincrement())
+  tenantId    BigInt
+  key         String
+  enabled     Boolean  @default(false)
+  configJson  Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, key])
+}
+
+model Course {
+  id                BigInt              @id @default(autoincrement())
+  tenantId          BigInt
+  title             String
+  slug              String
+  description       String?
+  subject           String?
+  level             String?
+  thumbnailUrl      String?
+  status            CourseStatus        @default(DRAFT)
+  publishedAt       DateTime?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  tenant            Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  instructors       CourseInstructor[]
+  lessonNodes       LessonNode[]
+  enrollments       Enrollment[]
+  studyPlans        StudyPlan[]
+  knowledgeBases    KnowledgeBase[]
+  kbChunks          KbChunk[]
+  aiChatSessions    AiChatSession[]
+  payments          Payment[]
+
+  @@unique([tenantId, slug])
+}
+
+model CourseInstructor {
+  id        BigInt   @id @default(autoincrement())
+  courseId  BigInt
+  userId    BigInt
+  role      String   @default("primary")
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([courseId, userId])
+}
+
+model LessonNode {
+  id                 BigInt              @id @default(autoincrement())
+  tenantId           BigInt
+  courseId           BigInt
+  parentId           BigInt?
+  nodeType           LessonNodeType      @default(LESSON)
+  title              String
+  path               String
+  /// Optional mirror column when you want to maintain native ltree via SQL migration.
+  pathLtree          Unsupported("ltree")?
+  depth              Int                 @default(0)
+  sortOrder          Int                 @default(0)
+  isPublished        Boolean             @default(false)
+  estimatedMinutes   Int                 @default(0)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  tenant             Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  course             Course              @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  parent             LessonNode?         @relation("LessonTree", fields: [parentId], references: [id], onDelete: Cascade)
+  children           LessonNode[]        @relation("LessonTree")
+  contents           LessonContent[]
+  transcripts        LessonTranscript[]
+  assets             LessonAsset[]
+  videos             VideoAsset[]
+  progressRows       LessonProgress[]
+  studyPlanItems     StudyPlanItem[]
+  kbDocuments        KbDocument[]
+  kbChunks           KbChunk[]
+  aiChatSessions     AiChatSession[]
+
+  @@index([courseId, parentId, sortOrder])
+  @@index([tenantId, courseId, path])
+}
+
+model LessonContent {
+  id           BigInt             @id @default(autoincrement())
+  lessonNodeId BigInt
+  contentType  LessonContentType
+  htmlContent  String?
+  plainText    String?
+  version      Int                @default(1)
+  updatedAt    DateTime           @updatedAt
+  lessonNode   LessonNode         @relation(fields: [lessonNodeId], references: [id], onDelete: Cascade)
+
+  @@unique([lessonNodeId, version])
+}
+
+model LessonTranscript {
+  id            BigInt           @id @default(autoincrement())
+  lessonNodeId  BigInt           @unique
+  language      String           @default("th")
+  status        ProcessingStatus @default(READY)
+  fullText      String?
+  segmentsJson  Json
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  lessonNode    LessonNode       @relation(fields: [lessonNodeId], references: [id], onDelete: Cascade)
+}
+
+model LessonAsset {
+  id           BigInt           @id @default(autoincrement())
+  lessonNodeId BigInt
+  assetType    LessonAssetType
+  title        String
+  fileUrl      String?
+  externalUrl  String?
+  mimeType     String?
+  sizeBytes    BigInt?
+  sortOrder    Int              @default(0)
+  createdAt    DateTime         @default(now())
+  lessonNode   LessonNode       @relation(fields: [lessonNodeId], references: [id], onDelete: Cascade)
+}
+
+model VideoAsset {
+  id               BigInt             @id @default(autoincrement())
+  lessonNodeId     BigInt
+  provider         VideoProvider
+  providerAssetId  String?
+  playbackId       String?
+  durationSeconds  Int?
+  status           ProcessingStatus   @default(UPLOADING)
+  hlsUrl           String?
+  posterUrl        String?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  lessonNode       LessonNode         @relation(fields: [lessonNodeId], references: [id], onDelete: Cascade)
+  transcripts      VideoTranscript[]
+  playbackSessions PlaybackSession[]
+}
+
+model VideoTranscript {
+  id            BigInt             @id @default(autoincrement())
+  videoAssetId  BigInt
+  language      String             @default("th")
+  source        String             @default("ai")
+  status        ProcessingStatus   @default(PROCESSING)
+  fullText      String?
+  createdAt     DateTime           @default(now())
+  videoAsset    VideoAsset         @relation(fields: [videoAssetId], references: [id], onDelete: Cascade)
+  segments      TranscriptSegment[]
+}
+
+model TranscriptSegment {
+  id            BigInt           @id @default(autoincrement())
+  transcriptId  BigInt
+  startMs       Int
+  endMs         Int
+  text          String
+  speakerLabel  String?
+  tokenCount    Int?
+  segmentIndex  Int
+  transcript    VideoTranscript  @relation(fields: [transcriptId], references: [id], onDelete: Cascade)
+
+  @@unique([transcriptId, segmentIndex])
+  @@index([transcriptId, startMs])
+}
+
+model Enrollment {
+  id             BigInt            @id @default(autoincrement())
+  tenantId       BigInt
+  courseId       BigInt
+  userId         BigInt
+  startedAt      DateTime          @default(now())
+  expiresAt      DateTime?
+  status         EnrollmentStatus  @default(ACTIVE)
+  source         String            @default("payment")
+  createdAt      DateTime          @default(now())
+  tenant         Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  course         Course            @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  user           User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lessonProgress LessonProgress[]
+
+  @@unique([tenantId, courseId, userId])
+}
+
+model LessonProgress {
+  id                  BigInt          @id @default(autoincrement())
+  enrollmentId        BigInt
+  lessonNodeId        BigInt
+  status              ProgressStatus  @default(NOT_STARTED)
+  progressPercent     Decimal         @default(0) @db.Decimal(5, 2)
+  lastPositionSeconds Int             @default(0)
+  lastViewedAt        DateTime?
+  completedAt         DateTime?
+  enrollment          Enrollment      @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  lessonNode          LessonNode      @relation(fields: [lessonNodeId], references: [id], onDelete: Cascade)
+
+  @@unique([enrollmentId, lessonNodeId])
+}
+
+model PlaybackSession {
+  id                  BigInt      @id @default(autoincrement())
+  userId              BigInt
+  videoAssetId        BigInt
+  deviceType          String?
+  speed               Decimal     @default(1.0) @db.Decimal(3, 1)
+  startedAt           DateTime    @default(now())
+  endedAt             DateTime?
+  lastPositionSeconds Int         @default(0)
+  user                User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  videoAsset          VideoAsset  @relation(fields: [videoAssetId], references: [id], onDelete: Cascade)
+}
+
+model StudyAvailability {
+  id               BigInt   @id @default(autoincrement())
+  userId           BigInt
+  weekday          Int
+  startMinute      Int
+  endMinute        Int
+  preferredMinutes Int      @default(30)
+  active           Boolean  @default(true)
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model StudyPlan {
+  id                 BigInt          @id @default(autoincrement())
+  userId             BigInt
+  courseId           BigInt
+  goalCompletionDate DateTime?
+  strategy           String?
+  status             PlannerStatus   @default(DRAFT)
+  generatedBy        PlannerSource   @default(AI)
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  user               User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course             Course          @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  items              StudyPlanItem[]
+}
+
+model StudyPlanItem {
+  id                BigInt          @id @default(autoincrement())
+  studyPlanId       BigInt
+  lessonNodeId      BigInt
+  scheduledStartAt  DateTime
+  scheduledEndAt    DateTime
+  plannedMinutes    Int
+  status            ProgressStatus  @default(NOT_STARTED)
+  aiNotes           String?
+  studyPlan         StudyPlan       @relation(fields: [studyPlanId], references: [id], onDelete: Cascade)
+  lessonNode        LessonNode      @relation(fields: [lessonNodeId], references: [id], onDelete: Cascade)
+}
+
+model NotificationDevice {
+  id          BigInt   @id @default(autoincrement())
+  userId      BigInt
+  platform    String
+  pushToken   String
+  deviceName  String?
+  lastSeenAt  DateTime?
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([platform, pushToken])
+}
+
+model NotificationRule {
+  id            BigInt                @id @default(autoincrement())
+  userId        BigInt
+  type          NotificationType
+  channel       NotificationChannel
+  scheduleJson  Json
+  enabled       Boolean               @default(true)
+  createdAt     DateTime              @default(now())
+  user          User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Notification {
+  id           BigInt               @id @default(autoincrement())
+  userId       BigInt
+  type         NotificationType
+  title        String
+  body         String
+  payloadJson  Json?
+  scheduledAt  DateTime?
+  sentAt       DateTime?
+  readAt       DateTime?
+  status       NotificationStatus   @default(SCHEDULED)
+  createdAt    DateTime             @default(now())
+  user         User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model KnowledgeBase {
+  id          BigInt                   @id @default(autoincrement())
+  tenantId    BigInt
+  courseId    BigInt?
+  name        String
+  status      ProcessingStatus         @default(PROCESSING)
+  visibility  KnowledgeBaseVisibility  @default(COURSE_ONLY)
+  createdAt   DateTime                 @default(now())
+  tenant      Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  course      Course?                  @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  documents   KbDocument[]
+}
+
+model KbDocument {
+  id               BigInt                    @id @default(autoincrement())
+  knowledgeBaseId  BigInt
+  lessonNodeId     BigInt?
+  sourceType       KnowledgeBaseSourceType
+  title            String
+  fileUrl          String?
+  extractedText    String?
+  status           ProcessingStatus         @default(PROCESSING)
+  checksum         String?
+  createdAt        DateTime                 @default(now())
+  knowledgeBase    KnowledgeBase            @relation(fields: [knowledgeBaseId], references: [id], onDelete: Cascade)
+  lessonNode       LessonNode?              @relation(fields: [lessonNodeId], references: [id], onDelete: SetNull)
+  chunks           KbChunk[]
+}
+
+model KbChunk {
+  id            BigInt                       @id @default(autoincrement())
+  documentId    BigInt
+  tenantId      BigInt
+  courseId      BigInt?
+  lessonNodeId  BigInt?
+  chunkIndex    Int
+  content       String
+  tokenCount    Int?
+  embedding     Unsupported("vector(1536)")?
+  metadataJson  Json?
+  createdAt     DateTime                     @default(now())
+  document      KbDocument                   @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  tenant        Tenant                       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  course        Course?                      @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lessonNode    LessonNode?                  @relation(fields: [lessonNodeId], references: [id], onDelete: SetNull)
+
+  @@unique([documentId, chunkIndex])
+  @@index([tenantId, courseId, lessonNodeId])
+}
+
+model AiChatSession {
+  id            BigInt       @id @default(autoincrement())
+  userId        BigInt
+  courseId      BigInt?
+  lessonNodeId  BigInt?
+  mode          ChatMode     @default(TUTOR)
+  createdAt     DateTime     @default(now())
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course        Course?      @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lessonNode    LessonNode?  @relation(fields: [lessonNodeId], references: [id], onDelete: SetNull)
+  messages      AiChatMessage[]
+}
+
+model AiChatMessage {
+  id            BigInt           @id @default(autoincrement())
+  sessionId     BigInt
+  role          ChatMessageRole
+  content       String
+  citationsJson Json?
+  createdAt     DateTime         @default(now())
+  session       AiChatSession    @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+}
+
+model Payment {
+  id          BigInt         @id @default(autoincrement())
+  tenantId    BigInt
+  userId      BigInt
+  courseId    BigInt?
+  gateway     PaymentGateway
+  gatewayRef  String?
+  amount      Decimal        @db.Decimal(12, 2)
+  currency    String         @default("THB")
+  status      PaymentStatus  @default(PENDING)
+  paidAt      DateTime?
+  createdAt   DateTime       @default(now())
+  tenant      Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course      Course?        @relation(fields: [courseId], references: [id], onDelete: SetNull)
+}
+
+model PaymentWebhook {
+  id           BigInt         @id @default(autoincrement())
+  gateway      PaymentGateway
+  eventType    String
+  eventId      String
+  payloadJson  Json
+  processedAt  DateTime?
+  status       String         @default("received")
+  createdAt    DateTime       @default(now())
+
+  @@unique([gateway, eventId])
+}
+
+model AuditLog {
+  id          BigInt    @id @default(autoincrement())
+  tenantId    BigInt?
+  actorUserId BigInt?
+  action      String
+  entityType  String
+  entityId    String
+  beforeJson  Json?
+  afterJson   Json?
+  createdAt   DateTime  @default(now())
+  tenant      Tenant?   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  actorUser   User?     @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+}

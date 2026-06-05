@@ -1,0 +1,1180 @@
+openapi: 3.1.0
+info:
+  title: LMS Platform API
+  version: 1.0.0
+  description: |
+    API specification for the LMS platform covering course builder,
+    AI tutor, and AI study planner.
+
+servers:
+  - url: https://api.example.com
+
+tags:
+  - name: Courses
+  - name: Lesson Nodes
+  - name: Media
+  - name: Knowledge Base
+  - name: AI Tutor
+  - name: Planner
+  - name: Admin
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  headers:
+    XTenantSlug:
+      description: Tenant context when not resolved by subdomain.
+      schema:
+        type: string
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            details:
+              type: object
+              additionalProperties: true
+      required: [error]
+    SuccessEnvelope:
+      type: object
+      properties:
+        data:
+          type: object
+          additionalProperties: true
+      required: [data]
+    Course:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        slug:
+          type: string
+        status:
+          type: string
+          enum: [draft, published, archived]
+      required: [id, title, slug, status]
+    LessonNode:
+      type: object
+      properties:
+        id:
+          type: string
+        parentId:
+          type: string
+          nullable: true
+        nodeType:
+          type: string
+          enum: [section, lesson, quiz, assignment]
+        title:
+          type: string
+        path:
+          type: string
+        depth:
+          type: integer
+        sortOrder:
+          type: integer
+        estimatedMinutes:
+          type: integer
+        isPublished:
+          type: boolean
+        transcriptLanguage:
+          type: string
+          nullable: true
+        transcriptStatus:
+          type: string
+          nullable: true
+          enum: [ready, processing, failed, uploading]
+        transcriptFullText:
+          type: string
+          nullable: true
+        transcriptSegments:
+          type: array
+          items:
+            type: object
+            properties:
+              seek:
+                type: string
+              progress:
+                type: number
+              text:
+                type: string
+            required: [seek, progress, text]
+        children:
+          type: array
+          items:
+            $ref: '#/components/schemas/LessonNode'
+      required:
+        - id
+        - parentId
+        - nodeType
+        - title
+        - path
+        - depth
+        - sortOrder
+        - estimatedMinutes
+        - isPublished
+        - children
+    Citation:
+      type: object
+      properties:
+        documentId:
+          type: string
+        chunkId:
+          type: string
+        title:
+          type: string
+        excerpt:
+          type: string
+      required: [documentId, chunkId]
+    StudyPlanItem:
+      type: object
+      properties:
+        id:
+          type: string
+        lessonNodeId:
+          type: string
+        lessonTitle:
+          type: string
+        scheduledStartAt:
+          type: string
+          format: date-time
+        scheduledEndAt:
+          type: string
+          format: date-time
+        plannedMinutes:
+          type: integer
+        status:
+          type: string
+          enum: [not_started, in_progress, completed]
+        aiNotes:
+          type: string
+          nullable: true
+      required:
+        - lessonNodeId
+        - scheduledStartAt
+        - scheduledEndAt
+        - plannedMinutes
+        - status
+    CreateCourseRequest:
+      type: object
+      properties:
+        title:
+          type: string
+        slug:
+          type: string
+        description:
+          type: string
+        subject:
+          type: string
+        level:
+          type: string
+      required: [title, slug]
+    CreateLessonNodeRequest:
+      type: object
+      properties:
+        parentId:
+          type: string
+          nullable: true
+        nodeType:
+          type: string
+          enum: [section, lesson, quiz, assignment]
+        title:
+          type: string
+        estimatedMinutes:
+          type: integer
+      required: [nodeType, title]
+    UpdateLessonNodeRequest:
+      type: object
+      properties:
+        title:
+          type: string
+        estimatedMinutes:
+          type: integer
+        isPublished:
+          type: boolean
+    ReorderTreeRequest:
+      type: object
+      properties:
+        moves:
+          type: array
+          items:
+            type: object
+            properties:
+              nodeId:
+                type: string
+              newParentId:
+                type: string
+                nullable: true
+              newSortOrder:
+                type: integer
+            required: [nodeId, newParentId, newSortOrder]
+      required: [moves]
+    UpsertLessonContentRequest:
+      type: object
+      properties:
+        contentType:
+          type: string
+          enum: [video, article, pdf, external_link, mixed]
+        htmlContent:
+          type: string
+        plainText:
+          type: string
+      required: [contentType]
+    UpsertLessonTranscriptRequest:
+      type: object
+      properties:
+        language:
+          type: string
+        status:
+          type: string
+          enum: [ready, processing, failed, uploading]
+        fullText:
+          type: string
+        segments:
+          type: array
+          items:
+            type: object
+            properties:
+              seek:
+                type: string
+              progress:
+                type: number
+              text:
+                type: string
+            required: [seek, progress, text]
+      required: [segments]
+    CreateLessonAssetRequest:
+      type: object
+      properties:
+        assetType:
+          type: string
+          enum: [pdf, link, image, attachment]
+        title:
+          type: string
+        fileUrl:
+          type: string
+        externalUrl:
+          type: string
+        mimeType:
+          type: string
+        sizeBytes:
+          type: integer
+      required: [assetType, title]
+    CreateVideoUploadUrlRequest:
+      type: object
+      properties:
+        fileName:
+          type: string
+        contentType:
+          type: string
+        sizeBytes:
+          type: integer
+      required: [fileName, contentType, sizeBytes]
+    CreateKnowledgeBaseRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        courseId:
+          type: string
+        visibility:
+          type: string
+          enum: [course_only, tenant_wide]
+      required: [name]
+    TranscribeVideoRequest:
+      type: object
+      properties:
+        language:
+          type: string
+        sourceText:
+          type: string
+        audioFilePath:
+          type: string
+    PlaybackHeartbeatRequest:
+      type: object
+      properties:
+        videoAssetId:
+          type: string
+        courseId:
+          type: string
+        lessonNodeId:
+          type: string
+        positionSeconds:
+          type: integer
+        speed:
+          type: number
+        deviceType:
+          type: string
+      required: [videoAssetId, courseId, lessonNodeId, positionSeconds]
+    UploadKnowledgeBaseDocumentRequest:
+      type: object
+      properties:
+        lessonNodeId:
+          type: string
+        sourceType:
+          type: string
+          enum: [pdf, docx, slide, transcript, note, html]
+        title:
+          type: string
+        fileUrl:
+          type: string
+        extractedText:
+          type: string
+      required: [sourceType, title, fileUrl]
+    UpdateKnowledgeBaseDocumentRequest:
+      type: object
+      properties:
+        lessonNodeId:
+          type: string
+        sourceType:
+          type: string
+          enum: [pdf, docx, slide, transcript, note, html]
+        title:
+          type: string
+        fileUrl:
+          type: string
+        extractedText:
+          type: string
+    BulkCreateKnowledgeBaseDocumentsRequest:
+      type: object
+      properties:
+        documents:
+          type: array
+          items:
+            $ref: '#/components/schemas/UploadKnowledgeBaseDocumentRequest'
+      required: [documents]
+    IngestDocumentRequest:
+      type: object
+      properties:
+        fileText:
+          type: string
+        localFilePath:
+          type: string
+    AskTutorRequest:
+      type: object
+      properties:
+        courseId:
+          type: string
+        lessonNodeId:
+          type: string
+        sessionId:
+          type: string
+        question:
+          type: string
+      required: [courseId, question]
+    SummaryRequest:
+      type: object
+      properties:
+        courseId:
+          type: string
+        lessonNodeId:
+          type: string
+        format:
+          type: string
+          enum: [bullet, paragraph]
+      required: [courseId]
+    GenerateExercisesRequest:
+      type: object
+      properties:
+        courseId:
+          type: string
+        lessonNodeId:
+          type: string
+        difficulty:
+          type: string
+          enum: [easy, medium, hard]
+        count:
+          type: integer
+        type:
+          type: string
+          enum: [multiple_choice, short_answer]
+      required: [courseId, difficulty, count, type]
+    UpsertAvailabilityRequest:
+      type: object
+      properties:
+        timezone:
+          type: string
+        slots:
+          type: array
+          items:
+            type: object
+            properties:
+              weekday:
+                type: integer
+              startMinute:
+                type: integer
+              endMinute:
+                type: integer
+              preferredMinutes:
+                type: integer
+            required: [weekday, startMinute, endMinute, preferredMinutes]
+      required: [timezone, slots]
+    GenerateStudyPlanRequest:
+      type: object
+      properties:
+        courseId:
+          type: string
+        goalCompletionDate:
+          type: string
+          format: date
+        strategy:
+          type: string
+      required: [courseId, goalCompletionDate]
+    ReplanRequest:
+      type: object
+      properties:
+        courseId:
+          type: string
+        reason:
+          type: string
+        goalCompletionDate:
+          type: string
+          format: date
+      required: [courseId, reason]
+    RegisterNotificationDeviceRequest:
+      type: object
+      properties:
+        platform:
+          type: string
+          enum: [web, ios, android, line, telegram]
+        pushToken:
+          type: string
+        deviceName:
+          type: string
+      required: [platform, pushToken]
+    NotificationItem:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+        title:
+          type: string
+        body:
+          type: string
+        payload:
+          type: object
+          additionalProperties: true
+        scheduledAt:
+          type: string
+          format: date-time
+          nullable: true
+        sentAt:
+          type: string
+          format: date-time
+          nullable: true
+        readAt:
+          type: string
+          format: date-time
+          nullable: true
+        status:
+          type: string
+          enum: [scheduled, sent, delivered, failed, read]
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, type, title, body, status, createdAt]
+
+security:
+  - bearerAuth: []
+
+paths:
+  /api/courses:
+    post:
+      tags: [Courses]
+      summary: Create a course
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCourseRequest'
+      responses:
+        '200':
+          description: Course created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Course'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/courses/{courseId}/tree:
+    get:
+      tags: [Courses]
+      summary: Get course lesson tree
+      parameters:
+        - name: courseId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Course tree
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      course:
+                        $ref: '#/components/schemas/Course'
+                      nodes:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/LessonNode'
+  /api/courses/{courseId}/nodes:
+    post:
+      tags: [Lesson Nodes]
+      summary: Create a lesson node
+      parameters:
+        - name: courseId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateLessonNodeRequest'
+      responses:
+        '200':
+          description: Lesson node created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/LessonNode'
+  /api/lesson-nodes/{lessonNodeId}:
+    patch:
+      tags: [Lesson Nodes]
+      summary: Update a lesson node
+      parameters:
+        - name: lessonNodeId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateLessonNodeRequest'
+      responses:
+        '200':
+          description: Lesson node updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+  /api/courses/{courseId}/tree/reorder:
+    patch:
+      tags: [Lesson Nodes]
+      summary: Reorder lesson tree
+      parameters:
+        - name: courseId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReorderTreeRequest'
+      responses:
+        '200':
+          description: Tree reordered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+  /api/lesson-nodes/{lessonNodeId}/content:
+    put:
+      tags: [Lesson Nodes]
+      summary: Upsert lesson content
+      parameters:
+        - name: lessonNodeId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpsertLessonContentRequest'
+      responses:
+        '200':
+          description: Lesson content saved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+  /api/lesson-nodes/{lessonNodeId}/transcript:
+    put:
+      tags: [Lesson Nodes]
+      summary: Upsert lesson transcript
+      parameters:
+        - name: lessonNodeId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpsertLessonTranscriptRequest'
+      responses:
+        '200':
+          description: Lesson transcript saved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+  /api/lesson-nodes/{lessonNodeId}/assets:
+    post:
+      tags: [Lesson Nodes]
+      summary: Attach lesson asset
+      parameters:
+        - name: lessonNodeId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateLessonAssetRequest'
+      responses:
+        '200':
+          description: Asset created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+  /api/lesson-nodes/{lessonNodeId}/videos/upload-url:
+    post:
+      tags: [Media]
+      summary: Create signed upload URL for lesson video
+      parameters:
+        - name: lessonNodeId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateVideoUploadUrlRequest'
+      responses:
+        '200':
+          description: Upload URL created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+  /api/knowledge-bases:
+    get:
+      tags: [Knowledge Base]
+      summary: List tenant knowledge bases
+      responses:
+        '200':
+          description: Knowledge bases returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+    post:
+      tags: [Knowledge Base]
+      summary: Create knowledge base
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateKnowledgeBaseRequest'
+      responses:
+        '200':
+          description: Knowledge base created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+  /api/courses/{courseId}/publish:
+    post:
+      tags: [Courses]
+      summary: Publish a course
+      parameters:
+        - name: courseId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Course published
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+  /api/videos/{videoAssetId}/transcribe:
+    post:
+      tags: [Media]
+      summary: Generate transcript for a video asset
+      parameters:
+        - name: videoAssetId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TranscribeVideoRequest'
+      responses:
+        '200':
+          description: Transcript generated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+  /api/videos/{videoAssetId}/transcript:
+    get:
+      tags: [Media]
+      summary: Get transcript with timestamped segments
+      parameters:
+        - name: videoAssetId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Transcript returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+  /api/progress/heartbeat:
+    post:
+      tags: [Media]
+      summary: Record playback heartbeat for auto-resume
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PlaybackHeartbeatRequest'
+      responses:
+        '200':
+          description: Heartbeat recorded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+  /api/knowledge-bases/{knowledgeBaseId}/documents:
+    get:
+      tags: [Knowledge Base]
+      summary: List knowledge base documents
+      parameters:
+        - name: knowledgeBaseId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Documents returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+    post:
+      tags: [Knowledge Base]
+      summary: Upload knowledge base document metadata
+      parameters:
+        - name: knowledgeBaseId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UploadKnowledgeBaseDocumentRequest'
+      responses:
+        '200':
+          description: Knowledge base document created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+  /api/knowledge-bases/{knowledgeBaseId}/documents/bulk:
+    post:
+      tags: [Knowledge Base]
+      summary: Bulk create knowledge base documents
+      parameters:
+        - name: knowledgeBaseId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BulkCreateKnowledgeBaseDocumentsRequest'
+      responses:
+        '200':
+          description: Knowledge base documents created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+  /api/knowledge-bases/documents/{documentId}/ingest:
+    post:
+      tags: [Knowledge Base]
+      summary: Ingest a knowledge base document into chunks and embeddings
+      parameters:
+        - name: documentId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IngestDocumentRequest'
+      responses:
+        '200':
+          description: Document ingested
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+  /api/knowledge-bases/documents/{documentId}:
+    patch:
+      tags: [Knowledge Base]
+      summary: Update a knowledge base document
+      parameters:
+        - name: documentId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateKnowledgeBaseDocumentRequest'
+      responses:
+        '200':
+          description: Document updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+    delete:
+      tags: [Knowledge Base]
+      summary: Delete a knowledge base document
+      parameters:
+        - name: documentId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Document deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+  /api/ai/tutor/query:
+    post:
+      tags: [AI Tutor]
+      summary: Ask AI tutor a question
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AskTutorRequest'
+      responses:
+        '200':
+          description: Tutor answer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+  /api/ai/tutor/summary:
+    post:
+      tags: [AI Tutor]
+      summary: Generate a lesson summary
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SummaryRequest'
+      responses:
+        '200':
+          description: Summary generated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+  /api/ai/tutor/exercises:
+    post:
+      tags: [AI Tutor]
+      summary: Generate additional exercises
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenerateExercisesRequest'
+      responses:
+        '200':
+          description: Exercises generated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+  /api/ai/sessions/{sessionId}:
+    get:
+      tags: [AI Tutor]
+      summary: Get AI session history
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Session history
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+  /api/planner/availability:
+    put:
+      tags: [Planner]
+      summary: Upsert weekly study availability
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpsertAvailabilityRequest'
+      responses:
+        '200':
+          description: Availability saved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+  /api/planner/generate:
+    post:
+      tags: [Planner]
+      summary: Generate a study plan
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenerateStudyPlanRequest'
+      responses:
+        '200':
+          description: Study plan generated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+  /api/planner/current:
+    get:
+      tags: [Planner]
+      summary: Get current study plan for a course
+      parameters:
+        - name: courseId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Current study plan
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+  /api/planner/replan:
+    post:
+      tags: [Planner]
+      summary: Recalculate study plan
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReplanRequest'
+      responses:
+        '200':
+          description: Study plan replanned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+  /api/admin/students/{studentId}/planner:
+    get:
+      tags: [Admin]
+      summary: Get student planner details
+      parameters:
+        - name: studentId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: courseId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Student planner details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+  /api/notifications/inbox:
+    get:
+      tags: [Notifications]
+      summary: Get notification inbox
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+      responses:
+        '200':
+          description: Inbox items
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+  /api/notifications/devices:
+    post:
+      tags: [Notifications]
+      summary: Register a notification device or channel
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterNotificationDeviceRequest'
+      responses:
+        '200':
+          description: Device registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+  /api/notifications/devices/{platform}/{pushToken}:
+    delete:
+      tags: [Notifications]
+      summary: Unregister a notification device or channel
+      parameters:
+        - name: platform
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [web, ios, android, line, telegram]
+        - name: pushToken
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Device removed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+  /api/notifications/{notificationId}/read:
+    post:
+      tags: [Notifications]
+      summary: Mark a notification as read
+      parameters:
+        - name: notificationId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Notification marked as read
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+  /api/notifications/dispatch:
+    post:
+      tags: [Notifications]
+      summary: Dispatch due notifications now
+      responses:
+        '200':
+          description: Dispatch enqueued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
