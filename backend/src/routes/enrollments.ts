@@ -3,6 +3,7 @@ import bcrypt from 'bcrypt';
 import { PlatformRole, TenantRole } from '@prisma/client';
 import prisma from '../lib/prisma';
 import { requireTenantBySlug } from '../lib/tenant';
+import { getPublicPackageOptionsFromPricing, syncPackageEnrollments, userHasCourseAccess } from '../lib/course-access';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { parseId } from '../utils/parseId';
 import { slugify } from '../utils/slugify';
@@ -134,6 +135,7 @@ router.post('/public/enroll', async (req: AuthRequest, res: Response) => {
     const {
       tenantSlug,
       courseId,
+      packageId,
       courseSlug,
       course: courseHint,
       email,
@@ -142,6 +144,7 @@ router.post('/public/enroll', async (req: AuthRequest, res: Response) => {
     } = req.body as {
       tenantSlug?: string;
       courseId?: string | number;
+      packageId?: string | null;
       courseSlug?: string;
       course?: string;
       email?: string;
@@ -155,8 +158,8 @@ router.post('/public/enroll', async (req: AuthRequest, res: Response) => {
     if (!cleanTenantSlug) {
       return res.status(400).json({ error: 'กรอกชื่อย่อใน URL ก่อน' });
     }
-    if (!parsedCourseId && !requestedCourseSlug) {
-      return res.status(400).json({ error: 'เลือกคอร์สก่อน' });
+    if (!packageId && !parsedCourseId && !requestedCourseSlug) {
+      return res.status(400).json({ error: 'เลือกแพ็กหรือคอร์สก่อน' });
     }
 
     const tenant = await requireTenantBySlug(prisma, cleanTenantSlug);
@@ -176,8 +179,28 @@ router.post('/public/enroll', async (req: AuthRequest, res: Response) => {
           },
         })
       : null);
-    if (!matchedCourse) {
+    const license = await prisma.license.findUnique({
+      where: { tenantId: tenant.id },
+      select: { metadata: true },
+    });
+    const pricing = license?.metadata && typeof license.metadata === 'object'
+      ? (license.metadata as Record<string, unknown>).pricing
+      : null;
+    const publicPackages = getPublicPackageOptionsFromPricing(pricing);
+    const selectedPackage = packageId
+      ? publicPackages.find((item) => item.id === String(packageId).trim())
+      : null;
+    const targetCourseIds = selectedPackage?.includedCourseIds?.length
+      ? selectedPackage.includedCourseIds.map((value) => Number(value)).filter(Number.isFinite)
+      : matchedCourse
+        ? [matchedCourse.id]
+        : [];
+
+    if (!selectedPackage && !matchedCourse) {
       return res.status(404).json({ error: 'ไม่พบคอร์ส' });
+    }
+    if (!targetCourseIds.length) {
+      return res.status(400).json({ error: 'แพ็กนี้ยังไม่ได้ผูกคอร์สสำหรับเข้าเรียน' });
     }
 
     const user = await ensureStudentIdentity({
@@ -207,48 +230,47 @@ router.post('/public/enroll', async (req: AuthRequest, res: Response) => {
         });
       }
 
-      const existingEnrollment = await tx.enrollment.findUnique({
-        where: {
-          tenantId_userId_courseId: {
+      let created = false;
+      let firstEnrollment = null as Awaited<ReturnType<typeof tx.enrollment.upsert>> | null;
+      for (const targetCourseId of targetCourseIds) {
+        const existingEnrollment = await tx.enrollment.findUnique({
+          where: {
+            tenantId_userId_courseId: {
+              tenantId: tenant.id,
+              userId: user.id,
+              courseId: targetCourseId,
+            },
+          },
+        });
+        const enrollment = existingEnrollment || await tx.enrollment.create({
+          data: {
             tenantId: tenant.id,
             userId: user.id,
-            courseId: matchedCourse.id,
+            courseId: targetCourseId,
           },
-        },
-      });
-
-      if (existingEnrollment) {
-        return {
-          enrollment: existingEnrollment,
-          created: false,
-        };
+        });
+        if (!existingEnrollment) created = true;
+        if (!firstEnrollment) firstEnrollment = enrollment;
       }
 
-      const enrollment = await tx.enrollment.create({
-        data: {
-          tenantId: tenant.id,
-          userId: user.id,
-            courseId: matchedCourse.id,
-        },
-      });
-
       return {
-        enrollment,
-        created: true,
+        enrollment: firstEnrollment,
+        created,
       };
     });
 
     res.status(result.created ? 201 : 200).json({
-      message: result.created ? 'สมัครเรียนสำเร็จ' : 'ผู้เรียนอยู่ในคอร์สนี้แล้ว',
+      message: result.created ? 'สมัครเรียนสำเร็จ' : 'ผู้เรียนมีสิทธิ์ในแพ็กหรือคอร์สนี้แล้ว',
       tenant: {
         id: tenant.id,
         name: tenant.name,
         slug: tenant.slug,
       },
       course: {
-        id: matchedCourse.id,
-        title: matchedCourse.title,
+        id: matchedCourse?.id || null,
+        title: matchedCourse?.title || selectedPackage?.name || 'แพ็กที่เลือก',
       },
+      package: selectedPackage ? { id: selectedPackage.id, name: selectedPackage.name, durationMonths: selectedPackage.durationMonths } : null,
       enrollment: result.enrollment,
       user: {
         id: user.id,
@@ -321,6 +343,8 @@ router.get('/my', authenticate, async (req: AuthRequest, res: Response) => {
       return res.status(401).json({ error: 'ผู้ใช้ยังไม่ได้ยืนยันตัวตน' });
     }
 
+    await syncPackageEnrollments(prisma, req.user!.tenantId, userId);
+
     const enrollments = await prisma.enrollment.findMany({
       where: {
         userId,
@@ -352,17 +376,15 @@ router.get('/status/:courseId', authenticate, async (req: AuthRequest, res: Resp
       return res.status(401).json({ error: 'ผู้ใช้ยังไม่ได้ยืนยันตัวตน' });
     }
 
-    const enrollment = await prisma.enrollment.findUnique({
-      where: {
-        tenantId_userId_courseId: {
-          tenantId: req.user!.tenantId,
-          userId,
-          courseId: parsedCourseId,
-        }
-      }
+    const access = await userHasCourseAccess({
+      prisma,
+      tenantId: req.user!.tenantId,
+      userId,
+      courseId: parsedCourseId,
+      role: req.user?.role,
     });
 
-    res.json({ enrolled: !!enrollment, enrollment });
+    res.json({ enrolled: access.allowed, enrollment: access.enrollment || null, source: access.source });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }

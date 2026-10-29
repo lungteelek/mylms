@@ -81,7 +81,7 @@ export default function HomeScreen({ navigation }: Props) {
             <Text style={styles.courseTitle}>{item.title}</Text>
           </TouchableOpacity>
         )}
-        ListEmptyComponent={<Text style={styles.emptyText}>No courses available</Text>}
+        ListEmptyComponent={<Text style={styles.emptyText}>ยังไม่มีคอร์ส</Text>}
       />
     </View>
   );

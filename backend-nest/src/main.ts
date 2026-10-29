@@ -20,7 +20,7 @@ async function bootstrap() {
     }
 
     const tenantSlug = hostName.slice(0, -(publicDomain.length + 1));
-    const tenant = await prisma.tenant.findUnique({
+    const tenant = await prisma.organization.findUnique({
       where: { slug: tenantSlug },
       select: { id: true, slug: true, name: true },
     });
@@ -84,7 +84,7 @@ async function bootstrap() {
     if (!slug) {
       return res.status(400).json({ error: 'slug is required' });
     }
-    const tenant = await prisma.tenant.findUnique({
+    const tenant = await prisma.organization.findUnique({
       where: { slug },
       select: { id: true, slug: true, name: true },
     });

@@ -49,17 +49,34 @@ stop_if_running() {
   fi
 }
 
+stop_matching_processes() {
+  local pattern="$1"
+  local pids
+  pids="$(pgrep -f "$pattern" || true)"
+  if [[ -z "$pids" ]]; then
+    return 0
+  fi
+
+  kill $pids >/dev/null 2>&1 || true
+  sleep 1
+
+  local survivors
+  survivors="$(pgrep -f "$pattern" || true)"
+  if [[ -n "$survivors" ]]; then
+    kill -9 $survivors >/dev/null 2>&1 || true
+  fi
+}
+
 require_cmd npm
 require_cmd npx
-require_cmd psql
+mkdir -p "$BACKEND_DIR/data"
 
 stop_if_running "$BACKEND_PID_FILE"
 stop_if_running "$NEST_PID_FILE"
-
-echo "Ensuring PostgreSQL extensions..."
-psql "postgresql://postgres:postgres@localhost:5432/mylms" \
-  -c 'CREATE EXTENSION IF NOT EXISTS ltree;' \
-  -c 'CREATE EXTENSION IF NOT EXISTS vector;' >/dev/null
+stop_matching_processes '/home/mylms/mylms_project/backend/dist/index.js'
+stop_matching_processes 'ts-node src/index.ts'
+stop_matching_processes '/home/mylms/mylms_project/backend-nest/dist/main.js'
+stop_matching_processes 'ts-node src/main.ts'
 
 echo "Syncing Prisma schema..."
 (cd "$BACKEND_DIR" && npx prisma db push --accept-data-loss >/dev/null)

@@ -1,18 +1,15 @@
 import 'dotenv/config';
 import { INestApplication, Injectable, OnModuleInit } from '@nestjs/common';
-import { PrismaClient } from '../../../backend/generated/lms-client';
-import { PrismaPg } from '@prisma/adapter-pg';
-import { Pool } from 'pg';
+import { PrismaClient } from '../../../backend/node_modules/@prisma/client';
+import { PrismaBetterSqlite3 } from '@prisma/adapter-better-sqlite3';
 
 @Injectable()
 export class PrismaService extends PrismaClient implements OnModuleInit {
-  private static pool = new Pool({
-    connectionString: process.env.DATABASE_URL || '',
-  });
+  private static databaseUrl = process.env.DATABASE_URL?.replace(/^file:/, '') || './data/mylms.db';
 
   constructor() {
     super({
-      adapter: new PrismaPg(PrismaService.pool),
+      adapter: new PrismaBetterSqlite3({ url: PrismaService.databaseUrl }),
     });
   }
 

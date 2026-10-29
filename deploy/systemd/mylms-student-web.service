@@ -1,0 +1,16 @@
+[Unit]
+Description=CourseChic Student Web (Next.js)
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/mylms/mylms_project/student-web
+Environment=NODE_ENV=production
+Environment=PORT=3101
+ExecStart=/usr/bin/npm run start -- --port 3101
+Restart=always
+RestartSec=5
+User=mylms
+
+[Install]
+WantedBy=multi-user.target

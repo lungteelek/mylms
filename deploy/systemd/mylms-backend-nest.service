@@ -1,0 +1,16 @@
+[Unit]
+Description=MyLMS Backend Nest API
+After=network.target
+
+[Service]
+Type=simple
+User=mylms
+WorkingDirectory=/home/mylms/mylms_project/backend-nest
+Environment=NODE_ENV=production
+EnvironmentFile=/home/mylms/mylms_project/backend/.env
+ExecStart=/usr/bin/env PORT=3001 /usr/bin/node /home/mylms/mylms_project/backend-nest/dist/main.js
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,17 @@
+[Unit]
+Description=CourseChic Educator Web
+After=network.target
+
+[Service]
+Type=simple
+User=mylms
+WorkingDirectory=/home/mylms/mylms_project/educator-web
+Environment=NODE_ENV=production
+Environment=PORT=3100
+EnvironmentFile=/home/mylms/mylms_project/educator-web/.env.local
+ExecStart=/usr/bin/npm run start -- --port 3100
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

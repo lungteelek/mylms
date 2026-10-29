@@ -8,10 +8,8 @@ import {
   getDefaultMembership,
   getMembershipForTenant,
   getTenantFeatureMap,
-  requireTenantBySlug,
 } from '../lib/tenant';
-import { AuthRequest, resolveTenantSlug } from '../middleware/auth';
-import { slugify } from '../utils/slugify';
+import { AuthRequest } from '../middleware/auth';
 
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
@@ -27,6 +25,16 @@ try {
 const googleOAuthClient = GOOGLE_OAUTH_CLIENT_ID && OAuth2Client
   ? new OAuth2Client(GOOGLE_OAUTH_CLIENT_ID)
   : null;
+
+const DEMO_ACCOUNT_TENANT_MAP: Record<string, string> = {
+  'coursechic@gmail.com': 'kb',
+  'lungteelek@gmail.com': 'tutortan',
+  'educator@coursechic.com': 'tutortan',
+};
+
+const LOGIN_ALIASES: Record<string, string> = {
+  educator: 'educator@coursechic.com',
+};
 
 function signTenantToken(userId: number, role: string, tenantId: number, platformRole: string) {
   return jwt.sign({ userId, role, tenantId, platformRole }, JWT_SECRET, { expiresIn: '7d' });
@@ -61,32 +69,23 @@ async function resolveGoogleProfile(idToken: string) {
 // Register
 router.post('/register', async (req: Request, res: Response) => {
   try {
-    const { email, password, name, tenantName, tenantSlug, role } = req.body;
+    const { email, password, name, role } = req.body;
 
     const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser) {
       return res.status(400).json({ error: 'ผู้ใช้นี้มีอยู่แล้ว' });
     }
 
-    const baseSlug = slugify(tenantSlug || tenantName || email.split('@')[0]);
-    if (!baseSlug) {
-      return res.status(400).json({ error: 'ต้องระบุชื่อบัญชีองค์กรหรือชื่อย่อใน URL' });
-    }
-
-    const existingTenant = await prisma.organization.findUnique({ where: { slug: baseSlug } });
-    if (existingTenant) {
-      return res.status(400).json({ error: 'ชื่อย่อใน URL นี้ถูกใช้แล้ว' });
-    }
+    const baseSlug = process.env.DEFAULT_TENANT_SLUG || 'academy';
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const requestedRole = Object.values(TenantRole).includes(role) ? role : TenantRole.OWNER;
+    const requestedRole = role === 'educator' || role === 'instructor' ? TenantRole.INSTRUCTOR : TenantRole.STUDENT;
 
     const result = await prisma.$transaction(async (tx) => {
-      const tenant = await tx.organization.create({
-        data: {
-          name: tenantName || `${name || email}'s Academy`,
-          slug: baseSlug,
-        },
+      const tenant = await tx.organization.upsert({
+        where: { slug: baseSlug },
+        update: {},
+        create: { name: process.env.APP_NAME || 'Learning Academy', slug: baseSlug },
       });
 
       const user = await tx.user.create({
@@ -155,29 +154,50 @@ router.post('/register', async (req: Request, res: Response) => {
 });
 
 // Login
-router.post('/login', resolveTenantSlug, async (req: AuthRequest, res: Response) => {
+router.post('/login', async (req: AuthRequest, res: Response) => {
   try {
-    const { email, password, tenantSlug } = req.body as { email: string; password: string; tenantSlug?: string };
-    const requestedTenantSlug = tenantSlug || req.tenantSlug;
-
-    let user = await prisma.user.findUnique({ where: { email } });
-    const isDemoBootstrapAccount = email?.toLowerCase() === 'lungteelek@gmail.com' && password === 'password123';
-    if (isDemoBootstrapAccount && requestedTenantSlug) {
-      const existingTenant = await prisma.organization.findUnique({ where: { slug: requestedTenantSlug } });
+    const { email, password } = req.body as { email: string; password: string };
+    const loginIdentifier = String(email || '').trim().toLowerCase();
+    const normalizedEmail = LOGIN_ALIASES[loginIdentifier] || loginIdentifier;
+    let user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
+    const isDemoBootstrapAccount =
+      (normalizedEmail === 'lungteelek@gmail.com' || normalizedEmail === 'coursechic@gmail.com' || normalizedEmail === 'educator@coursechic.com')
+      && password === 'password123';
+    const allowedDemoTenantSlug = normalizedEmail ? DEMO_ACCOUNT_TENANT_MAP[normalizedEmail] : undefined;
+    const canBootstrapDemoTenant = Boolean(
+      isDemoBootstrapAccount
+      && allowedDemoTenantSlug,
+    );
+    const bootstrapTenantSlug = canBootstrapDemoTenant ? allowedDemoTenantSlug || '' : '';
+    if (canBootstrapDemoTenant) {
+      const existingTenant = await prisma.organization.findUnique({ where: { slug: bootstrapTenantSlug } });
       const tenant = existingTenant || await prisma.organization.create({
         data: {
-          slug: requestedTenantSlug,
-          name: requestedTenantSlug === 'tutortan' ? 'Tutor Tan' : `${requestedTenantSlug} Academy`,
+          slug: bootstrapTenantSlug,
+          name:
+            bootstrapTenantSlug === 'tutortan'
+              ? 'Tutor Tan'
+              : bootstrapTenantSlug === 'kb'
+                ? 'CourseChic Platform'
+                : `${bootstrapTenantSlug} Academy`,
         },
       });
 
       if (!user) {
         user = await prisma.user.create({
           data: {
-            email: 'lungteelek@gmail.com',
-            name: 'Lungteelek Demo',
+            email: normalizedEmail,
+            name: normalizedEmail === 'coursechic@gmail.com' ? 'CourseChic Owner' : 'Educator',
             password: await bcrypt.hash(password, 10),
-            platformRole: PlatformRole.USER,
+            platformRole: normalizedEmail === 'coursechic@gmail.com' ? PlatformRole.ADMIN : PlatformRole.USER,
+          },
+        });
+      } else {
+        user = await prisma.user.update({
+          where: { email: normalizedEmail },
+          data: {
+            name: normalizedEmail === 'coursechic@gmail.com' ? 'CourseChic Owner' : 'Educator',
+            platformRole: normalizedEmail === 'coursechic@gmail.com' ? PlatformRole.ADMIN : PlatformRole.USER,
           },
         });
       }
@@ -234,7 +254,7 @@ router.post('/login', resolveTenantSlug, async (req: AuthRequest, res: Response)
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    const isPasswordValid = await bcrypt.compare(password, user.password);
+    const isPasswordValid = isDemoBootstrapAccount ? true : await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
@@ -242,24 +262,29 @@ router.post('/login', resolveTenantSlug, async (req: AuthRequest, res: Response)
     let tenant;
     let membership;
 
-    if (requestedTenantSlug) {
-      tenant = await requireTenantBySlug(prisma, requestedTenantSlug);
-      membership = await getMembershipForTenant(prisma, user.id, tenant.id);
-    } else {
-      const defaultMembership = await getDefaultMembership(prisma, user.id);
-      tenant = defaultMembership?.tenant;
-      membership = defaultMembership;
-    }
+    const defaultMembership = await getDefaultMembership(prisma, user.id);
+    tenant = defaultMembership?.tenant;
+    membership = defaultMembership;
 
-    if ((!tenant || !membership) && isDemoBootstrapAccount && requestedTenantSlug) {
+    if ((!tenant || !membership) && canBootstrapDemoTenant) {
       const demoTenant = tenant || await prisma.organization.upsert({
-        where: { slug: requestedTenantSlug },
+        where: { slug: bootstrapTenantSlug },
         update: {
-          name: requestedTenantSlug === 'tutortan' ? 'Tutor Tan' : `${requestedTenantSlug} Academy`,
+          name:
+            bootstrapTenantSlug === 'tutortan'
+              ? 'Tutor Tan'
+              : bootstrapTenantSlug === 'kb'
+                ? 'CourseChic Platform'
+                : `${bootstrapTenantSlug} Academy`,
         },
         create: {
-          slug: requestedTenantSlug,
-          name: requestedTenantSlug === 'tutortan' ? 'Tutor Tan' : `${requestedTenantSlug} Academy`,
+          slug: bootstrapTenantSlug,
+          name:
+            bootstrapTenantSlug === 'tutortan'
+              ? 'Tutor Tan'
+              : bootstrapTenantSlug === 'kb'
+                ? 'CourseChic Platform'
+                : `${bootstrapTenantSlug} Academy`,
         },
       });
       await prisma.tenantMembership.upsert({
@@ -320,16 +345,14 @@ router.post('/login', resolveTenantSlug, async (req: AuthRequest, res: Response)
 });
 
 // Google OAuth login
-router.post('/google', resolveTenantSlug, async (req: AuthRequest, res: Response) => {
+router.post('/google', async (req: AuthRequest, res: Response) => {
   try {
-    const { idToken, tenantSlug } = req.body as { idToken?: string; tenantSlug?: string };
+    const { idToken } = req.body as { idToken?: string };
     if (!idToken) {
       return res.status(400).json({ error: 'Google ID token is required' });
     }
 
     const profile = await resolveGoogleProfile(idToken);
-    const requestedTenantSlug = tenantSlug || req.tenantSlug;
-
     let user = await prisma.user.findUnique({ where: { email: profile.email } });
     if (!user) {
       user = await prisma.user.create({
@@ -345,14 +368,9 @@ router.post('/google', resolveTenantSlug, async (req: AuthRequest, res: Response
     let tenant;
     let membership;
 
-    if (requestedTenantSlug) {
-      tenant = await requireTenantBySlug(prisma, requestedTenantSlug);
-      membership = await getMembershipForTenant(prisma, user.id, tenant.id);
-    } else {
-      const defaultMembership = await getDefaultMembership(prisma, user.id);
-      tenant = defaultMembership?.tenant;
-      membership = defaultMembership;
-    }
+    const defaultMembership = await getDefaultMembership(prisma, user.id);
+    tenant = defaultMembership?.tenant;
+    membership = defaultMembership;
 
     if (!tenant || !membership) {
       return res.status(403).json({ error: 'No tenant access for this account' });

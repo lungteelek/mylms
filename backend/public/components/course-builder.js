@@ -5,7 +5,6 @@ import {
   countAssetNodes,
   countNodes,
   createLessonNode,
-  duplicateNodeById,
   normalizeTreeDepths,
   findNodeById,
   getNodePathLabel,
@@ -15,12 +14,12 @@ import {
   moveNodeToRoot,
   removeNodeById,
 } from './course-builder-utils.js';
-import { createDemoCourseBuilderState } from './course-builder-seed.js';
+import { createBlankCourseBuilderState } from './course-builder-seed.js';
 
 const styles = `
   :host {
     display: block;
-    font-family: inherit;
+    font-family: 'Sarabun', 'Noto Sans Thai', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     color: var(--text, #112033);
   }
 
@@ -38,7 +37,7 @@ const styles = `
     background: linear-gradient(180deg, rgba(11,19,34,.98), rgba(11,19,34,.92));
     border-color: rgba(125,211,252,.16);
     box-shadow: 0 24px 70px rgba(0,0,0,.34);
-    color: #eef5ff;
+    color: #c8d3e2;
   }
 
   .builder-head {
@@ -50,26 +49,91 @@ const styles = `
 
   .title-block h3 {
     margin: 0 0 .25rem;
-    font-size: 1rem;
-    line-height: 1.2;
-    letter-spacing: -.02em;
+    font-size: 1.05rem;
+    line-height: 1.18;
+    letter-spacing: -.015em;
   }
 
   .title-block p {
     margin: 0;
     color: var(--muted, #607089);
-    font-size: .86rem;
+    font-size: .88rem;
+    line-height: 1.55;
+  }
+
+  .course-title-field {
+    display: grid;
+    gap: .35rem;
+    margin-top: .7rem;
+    max-width: 30rem;
+  }
+
+  .course-description-field {
+    display: grid;
+    gap: .35rem;
+    margin-top: .65rem;
+    max-width: 42rem;
+  }
+
+  .course-title-field label {
+    font-size: .76rem;
+    font-weight: 700;
+    letter-spacing: .02em;
+    color: #43536b;
+  }
+
+  .course-title-input {
+    width: 100%;
+    border: 1px solid rgba(15,23,42,.08);
+    background: rgba(255,255,255,.96);
+    border-radius: 12px;
+    padding: .75rem .85rem;
+    font: inherit;
+    font-weight: 700;
+    color: var(--text, #112033);
+  }
+
+  :host-context(body.theme-dark) .course-title-input {
+    background: rgba(7,17,31,.98);
+    color: #c8d3e2;
+    border-color: rgba(125,211,252,.16);
+  }
+
+  .course-title-input:focus-visible {
+    outline: 2px solid rgba(11,123,220,.75);
+    outline-offset: 2px;
+  }
+
+  .course-description-textarea {
+    width: 100%;
+    min-height: 92px;
+    border: 1px solid rgba(15,23,42,.08);
+    background: rgba(255,255,255,.96);
+    border-radius: 12px;
+    padding: .75rem .85rem;
+    font: inherit;
+    color: var(--text, #112033);
+    resize: vertical;
+  }
+
+  :host-context(body.theme-dark) .course-description-textarea {
+    background: rgba(7,17,31,.98);
+    color: #c8d3e2;
+    border-color: rgba(125,211,252,.16);
+  }
+
+  .course-description-textarea:focus-visible {
+    outline: 2px solid rgba(11,123,220,.75);
+    outline-offset: 2px;
   }
 
   :host-context(body.theme-dark) .title-block p,
-  :host-context(body.theme-dark) .details-head p,
   :host-context(body.theme-dark) .asset-label,
   :host-context(body.theme-dark) .asset-meta,
   :host-context(body.theme-dark) .node-depth,
   :host-context(body.theme-dark) .pill.subtle,
-  :host-context(body.theme-dark) .details-head h4,
   :host-context(body.theme-dark) .asset-file {
-    color: #d7e4f4;
+    color: #b7c5d6;
   }
 
   .toolbar {
@@ -84,7 +148,7 @@ const styles = `
     align-items: center;
     padding: .38rem .65rem;
     border-radius: 999px;
-    font-size: .74rem;
+    font-size: .72rem;
     font-weight: 700;
     background: rgba(11,123,220,.07);
     color: #0b7bdc;
@@ -97,15 +161,27 @@ const styles = `
     border-color: rgba(15,23,42,.08);
   }
 
+  .pill.sync-draft {
+    background: rgba(249,115,22,.12);
+    color: #b45309;
+    border-color: rgba(249,115,22,.22);
+  }
+
+  .pill.sync-remote {
+    background: rgba(34,197,94,.12);
+    color: #15803d;
+    border-color: rgba(34,197,94,.22);
+  }
+
   :host-context(body.theme-dark) .pill {
     background: rgba(90,211,255,.12);
-    color: #eef5ff;
+    color: #c8d3e2;
     border-color: rgba(90,211,255,.18);
   }
 
   :host-context(body.theme-dark) .pill.subtle {
     background: rgba(255,255,255,.06);
-    color: #d7e4f4;
+    color: #b7c5d6;
     border-color: rgba(125,211,252,.12);
   }
 
@@ -114,33 +190,63 @@ const styles = `
     border: 1px solid rgba(15,23,42,.08);
     background: rgba(255,255,255,.86);
     color: var(--text, #112033);
-    border-radius: 999px;
+    border-radius: 12px;
     padding: .7rem .9rem;
     font: inherit;
-    font-size: .88rem;
-    font-weight: 600;
+    font-size: .86rem;
+    font-weight: 700;
     cursor: pointer;
-    transition: transform .18s ease, background .18s ease, border-color .18s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .45rem;
+    letter-spacing: -.01em;
+    transition: transform .18s ease, background .18s ease, border-color .18s ease, box-shadow .18s ease, filter .18s ease;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.34), 0 8px 16px rgba(15,23,42,.06);
   }
 
   :host-context(body.theme-dark) .button {
-    background: rgba(7,17,31,.92);
-    color: #eef5ff;
-    border-color: rgba(125,211,252,.12);
+    background: linear-gradient(180deg, rgba(20,34,59,.98), rgba(10,18,32,.98));
+    color: #c8d3e2;
+    border-color: rgba(125,211,252,.22);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.06), 0 10px 20px rgba(0,0,0,.22), 0 0 0 1px rgba(125,211,252,.04);
   }
 
   .button:hover { transform: translateY(-1px); }
   .button.primary {
-    border: 0;
-    color: #fff;
-    background: linear-gradient(135deg, #0b7bdc, #4f8cf7);
-    box-shadow: 0 12px 26px rgba(11,123,220,.22);
+    color: #07111f;
+    background: linear-gradient(180deg, #7df0df 0%, #69d8ff 100%);
+    border-color: rgba(125,211,252,.18);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.36), 0 10px 20px rgba(0,0,0,.20);
+  }
+
+  .button.secondary-soft {
+    background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.05));
+    border-color: rgba(125,211,252,.16);
+    color: var(--text);
+  }
+
+  .button.secondary-soft:hover {
+    border-color: rgba(125,211,252,.28);
+    background: linear-gradient(180deg, rgba(255,255,255,.1), rgba(255,255,255,.06));
   }
 
   .button.danger {
     color: #be123c;
     background: rgba(244,63,94,.08);
     border-color: rgba(244,63,94,.16);
+  }
+
+  .button.icon-btn {
+    width: 1.95rem;
+    height: 1.95rem;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: .82rem;
+    line-height: 1;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.24), 0 6px 12px rgba(15,23,42,.05);
   }
 
   .button:disabled {
@@ -167,7 +273,7 @@ const styles = `
 
   .node {
     border: 1px solid rgba(15,23,42,.08);
-    border-radius: 18px;
+    border-radius: 16px;
     background: rgba(255,255,255,.9);
     overflow: hidden;
   }
@@ -197,7 +303,7 @@ const styles = `
     justify-content: space-between;
     gap: .75rem;
     align-items: flex-start;
-    padding: .85rem .9rem .65rem;
+    padding: .9rem .95rem .7rem;
     background: linear-gradient(180deg, rgba(11,123,220,.03), transparent);
   }
 
@@ -213,28 +319,6 @@ const styles = `
     flex-wrap: wrap;
   }
 
-  .drag-handle {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 1.6rem;
-    height: 1.6rem;
-    border-radius: 999px;
-    border: 1px solid rgba(15,23,42,.08);
-    background: rgba(255,255,255,.92);
-    color: #7c8aa4;
-    font-size: .82rem;
-    letter-spacing: -0.15em;
-    cursor: grab;
-    user-select: none;
-  }
-
-  :host-context(body.theme-dark) .drag-handle {
-    background: rgba(255,255,255,.05);
-    border-color: rgba(125,211,252,.12);
-    color: #c9d8ec;
-  }
-
   .node-path {
     font-size: .74rem;
     font-weight: 800;
@@ -248,7 +332,7 @@ const styles = `
   :host-context(body.theme-dark) .node-path {
     background: rgba(90,211,255,.12);
     border-color: rgba(90,211,255,.22);
-    color: #f3f8ff;
+    color: #cbd6e4;
   }
 
   .node-depth {
@@ -271,8 +355,25 @@ const styles = `
   :host-context(body.theme-dark) .asset-input,
   :host-context(body.theme-dark) .url-input {
     background: rgba(7,17,31,.98);
-    color: #f3f8ff;
+    color: #c8d3e2;
     border-color: rgba(125,211,252,.16);
+  }
+
+  :host-context(body.theme-dark) .details-panel .field input,
+  :host-context(body.theme-dark) .details-panel .field select,
+  :host-context(body.theme-dark) .details-panel .field textarea {
+    background: rgba(10,20,38,.92);
+    color: #c8d3e2;
+    border-color: rgba(125,211,252,.16);
+  }
+
+  :host-context(body.theme-dark) .details-panel .field input::placeholder,
+  :host-context(body.theme-dark) .details-panel .field textarea::placeholder {
+    color: rgba(168,184,208,.62);
+  }
+
+  :host-context(body.theme-dark) .details-panel .field small {
+    color: rgba(168,184,208,.72);
   }
 
   .node-title:focus-visible,
@@ -284,10 +385,10 @@ const styles = `
 
   .node-actions {
     display: flex;
-    gap: .4rem;
-    flex-wrap: wrap;
+    gap: .25rem;
+    flex-wrap: nowrap;
     justify-content: flex-end;
-    min-width: 9rem;
+    min-width: 0;
   }
 
   .node-body {
@@ -296,70 +397,19 @@ const styles = `
     padding: 0 .9rem .9rem;
   }
 
-  .asset-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: .7rem;
+  .add-inline-btn {
+    width: 1.85rem;
+    font-size: .92rem;
+    background: rgba(34,197,94,.08);
+    color: #166534;
+    border-color: rgba(34,197,94,.18);
+    box-shadow: none;
   }
 
-  .asset-box {
-    display: grid;
-    gap: .45rem;
-    padding: .8rem;
-    border-radius: 16px;
-    background: rgba(248,251,255,.95);
-    border: 1px solid rgba(15,23,42,.06);
-  }
-
-  :host-context(body.theme-dark) .asset-box {
-    background: rgba(7,17,31,.92);
-    border-color: rgba(125,211,252,.12);
-  }
-
-  .asset-box header {
-    display: flex;
-    justify-content: space-between;
-    gap: .5rem;
-    align-items: center;
-    font-size: .76rem;
-    font-weight: 800;
-    text-transform: uppercase;
-    letter-spacing: .08em;
-    color: var(--muted, #607089);
-  }
-
-  .asset-label {
-    font-size: .77rem;
-    color: var(--muted, #607089);
-  }
-
-  .asset-input,
-  .url-input {
-    width: 100%;
-    border: 1px solid rgba(15,23,42,.08);
-    background: rgba(255,255,255,.96);
-    border-radius: 12px;
-    padding: .68rem .75rem;
-    font: inherit;
-    font-size: .88rem;
-    color: var(--text, #112033);
-  }
-
-  .asset-meta {
-    display: flex;
-    justify-content: space-between;
-    gap: .75rem;
-    align-items: center;
-    font-size: .78rem;
-    color: var(--muted, #607089);
-  }
-
-  .asset-file {
-    font-weight: 600;
-    color: var(--text, #112033);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+  :host-context(body.theme-dark) .add-inline-btn {
+    background: rgba(34,197,94,.12);
+    color: #dcfce7;
+    border-color: rgba(34,197,94,.22);
   }
 
   .children {
@@ -396,7 +446,7 @@ const styles = `
   :host-context(body.theme-dark) .empty {
     background: rgba(7,17,31,.98);
     border-color: rgba(125,211,252,.18);
-    color: #f1f7ff;
+    color: #c5d1df;
   }
 
   .summary {
@@ -413,13 +463,14 @@ const styles = `
 
   .builder-body {
     display: grid;
-    grid-template-columns: minmax(0, 1.45fr) minmax(300px, .85fr);
+    grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
     gap: 1rem;
     align-items: start;
   }
 
   .builder-main,
-  .details-panel {
+  .details-panel,
+  .preview-panel-wrap {
     min-width: 0;
   }
 
@@ -476,6 +527,12 @@ const styles = `
     letter-spacing: .02em;
   }
 
+  :host-context(body.theme-dark) .details-panel .field label,
+  :host-context(body.theme-dark) .details-panel .details-head h4,
+  :host-context(body.theme-dark) .details-panel .validation strong {
+    color: #bfcddb;
+  }
+
   .field input,
   .field select,
   .field textarea {
@@ -488,6 +545,19 @@ const styles = `
     color: var(--text, #112033);
   }
 
+  :host-context(body.theme-dark) .details-panel .field input,
+  :host-context(body.theme-dark) .details-panel .field select,
+  :host-context(body.theme-dark) .details-panel .field textarea {
+    background: rgba(10,20,38,.94);
+    border-color: rgba(125,211,252,.12);
+    color: #bfcddb;
+  }
+
+  :host-context(body.theme-dark) .details-panel .field input::placeholder,
+  :host-context(body.theme-dark) .details-panel .field textarea::placeholder {
+    color: rgba(168,184,208,.52);
+  }
+
   .field textarea {
     min-height: 120px;
     resize: vertical;
@@ -497,6 +567,12 @@ const styles = `
     color: var(--muted, #607089);
     font-size: .76rem;
     line-height: 1.4;
+  }
+
+  :host-context(body.theme-dark) .details-panel .field small,
+  :host-context(body.theme-dark) .details-panel .validation ul,
+  :host-context(body.theme-dark) .details-panel .details-head p {
+    color: rgba(168,184,208,.62);
   }
 
   .validation {
@@ -530,9 +606,9 @@ const styles = `
     gap: .85rem;
     padding: 1rem;
     border-radius: 18px;
-    background: linear-gradient(180deg, rgba(9,37,84,.98), rgba(14,26,55,.98));
-    color: #eef4ff;
-    border: 1px solid rgba(148,163,184,.18);
+    background: linear-gradient(180deg, rgba(10,20,38,.98), rgba(7,17,31,.98));
+    color: #bfcddb;
+    border: 1px solid rgba(125,211,252,.12);
     box-shadow: 0 18px 32px rgba(15,23,42,.15);
   }
 
@@ -540,7 +616,7 @@ const styles = `
     font-size: .72rem;
     letter-spacing: .12em;
     text-transform: uppercase;
-    color: rgba(191,219,254,.9);
+    color: rgba(191,219,254,.52);
   }
 
   .preview-panel h5 {
@@ -551,7 +627,7 @@ const styles = `
 
   .preview-panel p {
     margin: 0;
-    color: rgba(226,232,240,.88);
+    color: rgba(226,232,240,.56);
     line-height: 1.6;
     font-size: .88rem;
   }
@@ -561,8 +637,8 @@ const styles = `
     gap: .65rem;
     padding: .9rem;
     border-radius: 16px;
-    background: rgba(255,255,255,.06);
-    border: 1px solid rgba(255,255,255,.08);
+    background: rgba(255,255,255,.04);
+    border: 1px solid rgba(125,211,252,.10);
   }
 
   .preview-meta {
@@ -581,13 +657,13 @@ const styles = `
     font-weight: 700;
     background: rgba(59,130,246,.16);
     border: 1px solid rgba(96,165,250,.2);
-    color: #dbeafe;
+    color: #c0d2e8;
   }
 
   .preview-list {
     margin: 0;
     padding-left: 1rem;
-    color: rgba(226,232,240,.9);
+    color: rgba(226,232,240,.56);
     font-size: .86rem;
     line-height: 1.55;
   }
@@ -601,11 +677,92 @@ const styles = `
     font-size: .82rem;
     text-transform: uppercase;
     letter-spacing: .08em;
-    color: rgba(191,219,254,.9);
+    color: rgba(191,219,254,.52);
   }
 
   .preview-asset span {
     font-weight: 600;
+  }
+
+  .preview-meta-row {
+    display: flex;
+    gap: .5rem;
+    flex-wrap: wrap;
+  }
+
+  .preview-meta-row .pill {
+    background: rgba(255,255,255,.08);
+    border-color: rgba(255,255,255,.12);
+    color: #c0d2e8;
+  }
+
+  .preview-summary {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: .5rem;
+  }
+
+  .preview-stat {
+    padding: .7rem .75rem;
+    border-radius: 14px;
+    background: rgba(255,255,255,.06);
+    border: 1px solid rgba(255,255,255,.08);
+  }
+
+  .preview-stat span {
+    display: block;
+    color: rgba(191,219,254,.48);
+    font-size: .72rem;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    margin-bottom: .25rem;
+  }
+
+  .preview-stat strong {
+    font-size: .96rem;
+    color: #bfcddb;
+  }
+
+  .empty-workspace {
+    display: grid;
+    gap: 1rem;
+    align-items: center;
+    justify-items: start;
+    padding: 1.1rem;
+    border-radius: 18px;
+    background: rgba(11,123,220,.05);
+    border: 1px dashed rgba(11,123,220,.16);
+    color: var(--text, #112033);
+    min-height: 280px;
+  }
+
+  :host-context(body.theme-dark) .empty-workspace {
+    background: rgba(90,211,255,.06);
+    border-color: rgba(90,211,255,.18);
+    color: #c8d3e2;
+  }
+
+  .empty-workspace h4 {
+    margin: 0;
+    font-size: 1.02rem;
+    letter-spacing: -.02em;
+  }
+
+  .empty-workspace p {
+    margin: .3rem 0 0;
+    color: var(--muted, #607089);
+    line-height: 1.6;
+    max-width: 42rem;
+  }
+
+  :host-context(body.theme-dark) .empty-workspace p {
+    color: rgba(168,184,208,.78);
+  }
+
+  .empty-workspace .empty-actions {
+    display: flex;
+    gap: .5rem;
+    flex-wrap: wrap;
   }
 
   @media (max-width: 920px) {
@@ -641,17 +798,24 @@ function renderNode(node, pathParts, selectedId, depthLimit, draggingNodeId, dro
   const hasChildren = Boolean(node.children && node.children.length);
   const currentDepth = node.depth || pathParts.length;
   const disableAdd = currentDepth >= depthLimit;
+  const canDelete = !hasChildren;
   const asset = node.asset || { type: 'none', fileName: '', url: '' };
+  const nodeType = (node.nodeType || (currentDepth <= 1 ? 'section' : 'lesson')).toLowerCase();
+  const hasVideo = Boolean(node.videoUrl || (asset && asset.type === 'url' && String(asset.url || '').includes('/videos/play?mediaId=')));
+  const videoLabel = hasVideo
+    ? node.videoStatus === 'ready' ? 'วิดีโอพร้อม' : node.videoStatus === 'failed' ? 'วิดีโอมีปัญหา' : 'กำลังเตรียมวิดีโอ'
+    : 'ยังไม่มีวิดีโอ';
 
   return `
-    <article class="node ${node.id === selectedId ? 'selected' : ''} ${draggingNodeId === node.id ? 'dragging' : ''}" draggable="true" data-node-id="${node.id}" data-path="${pathLabel}">
+    <article class="node ${node.id === selectedId ? 'selected' : ''} ${draggingNodeId === node.id ? 'dragging' : ''}" data-node-id="${node.id}" data-path="${pathLabel}" role="button" tabindex="0" aria-label="เลือกบทเรียน ${escapeHtml(node.title)}">
       <div class="node-head ${dropTarget?.zone === 'after' && dropTarget?.nodeId === node.id ? 'drop-active' : ''}" data-drop-zone="after" data-node-id="${node.id}">
         <div style="flex: 1; min-width: 0;">
           <div class="node-label">
-            <span class="drag-handle" aria-hidden="true">⋮⋮</span>
             <span class="node-path">${pathLabel}</span>
             <span class="node-depth">ชั้น ${currentDepth}</span>
-            <span class="pill subtle">${hasChildren ? `${node.children.length} บทเรียนย่อย` : 'ใบไม้ปลายทาง'}</span>
+            <span class="pill subtle">${hasChildren ? `${node.children.length} บทเรียนย่อย` : 'ไม่มีบทเรียนย่อย'}</span>
+            <span class="pill ${nodeType === 'section' ? 'sync-draft' : 'sync-remote'}">${escapeHtml(nodeType)}</span>
+            <span class="pill ${hasVideo ? 'sync-remote' : 'sync-draft'}">${videoLabel}</span>
           </div>
           <input
             class="node-title"
@@ -663,51 +827,15 @@ function renderNode(node, pathParts, selectedId, depthLimit, draggingNodeId, dro
           />
         </div>
         <div class="node-actions">
-          <button class="button" type="button" data-action="select" data-node-id="${node.id}">เลือก</button>
-          <button class="button" type="button" data-action="duplicate" data-node-id="${node.id}">ทำสำเนา</button>
-          <button class="button" type="button" data-action="move-up" data-node-id="${node.id}">↑</button>
-          <button class="button" type="button" data-action="move-down" data-node-id="${node.id}">↓</button>
-          <button class="button" type="button" data-action="add-child" data-node-id="${node.id}" ${disableAdd ? 'disabled' : ''}>+ บทเรียนย่อย</button>
-          <button class="button danger" type="button" data-action="delete" data-node-id="${node.id}">ลบ</button>
-        </div>
-      </div>
-
-      <div class="node-body">
-        <div class="asset-grid">
-          <div class="asset-box">
-            <header>
-              <span>อัปโหลด PDF</span>
-              <span class="asset-label">อัปโหลดไปยัง server อัตโนมัติ</span>
-            </header>
-            <input class="asset-input" type="file" accept=".pdf,application/pdf" data-action="asset-file" data-node-id="${node.id}" />
-            <div class="asset-meta">
-              <span class="asset-file">${asset.type === 'pdf' ? escapeHtml(asset.fileName || 'แนบ PDF แล้ว') : 'ยังไม่มี PDF แนบ'}</span>
-              <button class="button" type="button" data-action="clear-asset" data-node-id="${node.id}">ล้าง</button>
-            </div>
-          </div>
-
-          <div class="asset-box">
-            <header>
-              <span>ลิงก์ภายนอก</span>
-              <span class="asset-label">บันทึกพร้อมฉบับร่าง</span>
-            </header>
-            <input
-              class="url-input"
-              type="url"
-              placeholder="https://example.com/lesson-material"
-              value="${escapeHtml(asset.type === 'url' ? asset.url || '' : '')}"
-              data-action="asset-url"
-              data-node-id="${node.id}"
-            />
-            <div class="asset-meta">
-              <span class="asset-file">${asset.type === 'url' ? escapeHtml(asset.url || 'แนบลิงก์แล้ว') : 'ยังไม่มีลิงก์แนบ'}</span>
-            </div>
-          </div>
+          <button class="button icon-btn add-inline-btn" type="button" data-action="add-child" data-node-id="${node.id}" aria-label="เพิ่มบทเรียนย่อย" title="${disableAdd ? 'เพิ่มไม่ได้เมื่อถึงลึกสุด' : 'เพิ่มบทเรียนย่อย'}" ${disableAdd ? 'disabled' : ''}>+</button>
+          <button class="button icon-btn" type="button" data-action="move-up" data-node-id="${node.id}" aria-label="เลื่อนบทเรียนขึ้น" title="เลื่อนขึ้น">↑</button>
+          <button class="button icon-btn" type="button" data-action="move-down" data-node-id="${node.id}" aria-label="เลื่อนบทเรียนลง" title="เลื่อนลง">↓</button>
+          <button class="button danger icon-btn" type="button" data-action="delete" data-node-id="${node.id}" ${canDelete ? '' : 'disabled'} title="${canDelete ? 'ลบบทเรียนนี้' : 'ลบไม่ได้เพราะยังมีบทเรียนย่อย'}" aria-label="ลบบทเรียนนี้">🗑</button>
         </div>
       </div>
 
       <div class="children ${draggingNodeId ? 'droppable' : ''} ${dropTarget?.zone === 'inside' && dropTarget?.nodeId === node.id ? 'drop-active' : ''}" data-drop-zone="inside" data-node-id="${node.id}">
-        ${hasChildren ? node.children.map((child, index) => renderNode(child, [...pathParts, index + 1], selectedId, depthLimit, draggingNodeId, dropTarget)).join('') : '<div class="empty">ยังไม่มีบทเรียนย่อย เพิ่มบทเรียนย่อยเพื่อขยายโครงสร้าง</div>'}
+        ${hasChildren ? node.children.map((child, index) => renderNode(child, [...pathParts, index + 1], selectedId, depthLimit, draggingNodeId, dropTarget)).join('') : '<div class="empty">ยังไม่มีบทเรียนย่อย</div>'}
       </div>
     </article>
   `;
@@ -732,7 +860,31 @@ function slugify(value) {
     .replace(/^-+|-+$/g, '');
 }
 
+function getStorageScope() {
+  const sessionTenant = window.CourseChic?.getSession?.()?.tenantSlug;
+  const pageTenant = document.body?.dataset?.tenantSlug || window.COURSECHIC_DEFAULT_TENANT_SLUG || null;
+  const hostTenant = (() => {
+    try {
+      const host = window.location.hostname.toLowerCase();
+      const appDomain = 'coursechic.com';
+      if (!host.endsWith(`.${appDomain}`) || host === appDomain) {
+        return null;
+      }
+      return host.slice(0, -(appDomain.length + 1));
+    } catch {
+      return null;
+    }
+  })();
+  return String(sessionTenant || pageTenant || hostTenant || 'global').trim().toLowerCase() || 'global';
+}
+
 function getStorageKey(courseId) {
+  const scope = getStorageScope();
+  const courseKey = courseId ? String(courseId).trim() : 'draft';
+  return `${COURSE_BUILDER_STORAGE_KEY}:${scope}:${courseKey}`;
+}
+
+function getLegacyStorageKey(courseId) {
   return courseId ? `${COURSE_BUILDER_STORAGE_KEY}:${courseId}` : COURSE_BUILDER_STORAGE_KEY;
 }
 
@@ -740,7 +892,7 @@ function remoteNodeToLocal(node) {
   const asset = node.asset || {};
   return {
     id: node.id,
-    title: node.title,
+    title: normalizeNodeTitle(node.title),
     depth: Math.max(1, Number(node.depth || 1)),
     nodeType: node.nodeType || 'lesson',
     estimatedMinutes: Number(node.estimatedMinutes || 0),
@@ -752,6 +904,11 @@ function remoteNodeToLocal(node) {
     transcriptLanguage: node.transcriptLanguage || 'th',
     transcriptStatus: node.transcriptStatus || 'ready',
     transcriptFullText: node.transcriptFullText || '',
+    videoUrl: node.videoUrl || '',
+    videoStatus: node.videoStatus || null,
+    videoMediaId: node.videoMediaId || null,
+    videoHlsUrl: node.videoHlsUrl || null,
+    videoPosterUrl: node.videoPosterUrl || null,
     asset: asset?.type && asset.type !== 'none'
       ? {
           type: asset.type === 'pdf' ? 'pdf' : 'url',
@@ -768,8 +925,8 @@ function remoteNodeToLocal(node) {
 }
 
 function moduleToLocalNode(module) {
-  return createLessonNode({
-    title: module.title || 'New lesson',
+  const node = createLessonNode({
+    title: normalizeNodeTitle(module.title) || 'บทเรียนใหม่',
     depth: 1,
     asset: module.videoUrl
       ? {
@@ -778,6 +935,48 @@ function moduleToLocalNode(module) {
           url: module.videoUrl,
         }
       : undefined,
+  });
+  node.nodeType = 'lesson';
+  return node;
+}
+
+function normalizeNodeTitle(title) {
+  const value = String(title || '').trim();
+  if (!value) return 'บทเรียนใหม่';
+  if (/^no course$/i.test(value) || /^course preview$/i.test(value)) {
+    return 'บทเรียนใหม่';
+  }
+  return value;
+}
+
+function normalizeTreeTitles(nodes) {
+  return (Array.isArray(nodes) ? nodes : []).map((node) => ({
+    ...node,
+    title: normalizeNodeTitle(node.title),
+    children: normalizeTreeTitles(node.children || []),
+  }));
+}
+
+function mergeVideoMetadata(nodes, remoteNodes) {
+  const lookup = new Map();
+  const indexRemote = (items) => {
+    (Array.isArray(items) ? items : []).forEach((node) => {
+      lookup.set(String(node.id), node);
+      indexRemote(node.children);
+    });
+  };
+  indexRemote(remoteNodes);
+  return (Array.isArray(nodes) ? nodes : []).map((node) => {
+    const remote = lookup.get(String(node.id));
+    return {
+      ...node,
+      videoUrl: remote?.videoUrl || node.videoUrl || '',
+      videoStatus: remote?.videoStatus || node.videoStatus || null,
+      videoMediaId: remote?.videoMediaId || node.videoMediaId || null,
+      videoHlsUrl: remote?.videoHlsUrl || node.videoHlsUrl || null,
+      videoPosterUrl: remote?.videoPosterUrl || node.videoPosterUrl || null,
+      children: mergeVideoMetadata(node.children || [], remote?.children || []),
+    };
   });
 }
 
@@ -875,7 +1074,7 @@ class CourseBuilderEditor extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: 'open' });
-    this.state = createDemoCourseBuilderState();
+    this.state = createBlankCourseBuilderState();
     this.selectedNodeId = this.state.nodes[0]?.id || null;
     this.course = {
       id: null,
@@ -904,25 +1103,77 @@ class CourseBuilderEditor extends HTMLElement {
 
   setCourse(course) {
     if (!course) return;
+    const previousSelectedNodeId = this.selectedNodeId;
+    const remoteTree = Array.isArray(course.tree) ? course.tree : [];
+    const remoteLocalNodes = remoteTree.length ? remoteTree.map(remoteNodeToLocal) : [];
     this.course = {
       ...this.course,
       id: course.id ?? this.course.id,
       remoteCourseId: course.remoteCourseId ?? this.course.remoteCourseId ?? null,
       title: course.title || this.course.title,
       status: course.status || this.course.status,
-      description: course.description || '',
+      description: course.description ?? this.course.description ?? '',
       modules: Array.isArray(course.modules) ? course.modules : [],
     };
-    this.storageKey = getStorageKey(this.course.id);
+    this.storageKey = getStorageKey(this.course.id || this.course.remoteCourseId || null);
     const persisted = this.readPersisted();
-    if (persisted?.nodes?.length) {
+    if (remoteLocalNodes.length) {
+      this.state.nodes = remoteLocalNodes;
+      const preservedSelected = previousSelectedNodeId && findNodeById(this.state.nodes, previousSelectedNodeId)
+        ? previousSelectedNodeId
+        : this.state.nodes[0]?.id || null;
+      this.selectedNodeId = preservedSelected;
+      this.syncStatus = 'synced';
+      this.isDirty = false;
+      this.persist();
+    } else if (persisted?.nodes?.length) {
       this.restore(true);
+      this.state.nodes = mergeVideoMetadata(this.state.nodes, course.tree || course.modules || []);
+      if (previousSelectedNodeId && findNodeById(this.state.nodes, previousSelectedNodeId)) {
+        this.selectedNodeId = previousSelectedNodeId;
+      }
     } else if (this.course.modules.length) {
       this.state.nodes = this.course.modules.map(moduleToLocalNode);
-      this.selectedNodeId = this.state.nodes[0]?.id || null;
+      const preservedSelected = previousSelectedNodeId && findNodeById(this.state.nodes, previousSelectedNodeId)
+        ? previousSelectedNodeId
+        : this.state.nodes[0]?.id || null;
+      this.selectedNodeId = preservedSelected;
+    } else {
+      this.state.nodes = [];
+      this.selectedNodeId = null;
     }
     this.render();
     void this.hydrateCourse();
+  }
+
+  startFreshCourse() {
+    this.state = createBlankCourseBuilderState();
+    const firstRoot = createLessonNode({
+      title: 'บทเรียนใหม่',
+      depth: 1,
+    });
+    firstRoot.nodeType = 'lesson';
+    this.state.nodes = [firstRoot];
+    this.selectedNodeId = firstRoot.id;
+    this.course = {
+      id: null,
+      remoteCourseId: null,
+      title: this.state.courseTitle,
+      status: this.state.courseStatus,
+      description: '',
+      modules: [],
+    };
+    this.storageKey = getStorageKey(null);
+    this.syncStatus = 'local';
+    this.isDirty = false;
+    this.isSaving = false;
+    this.lastSavedAt = null;
+    this.persist();
+    this.render();
+    this.dispatchSelection();
+    requestAnimationFrame(() => {
+      this.shadowRoot?.querySelector('#courseTitleInput')?.focus();
+    });
   }
 
   getData() {
@@ -943,6 +1194,19 @@ class CourseBuilderEditor extends HTMLElement {
   patchSelectedNode(mutate) {
     if (!this.selectedNodeId) return;
     this.updateNode(this.selectedNodeId, mutate);
+  }
+
+  dispatchSelection() {
+    const selected = this.getSelectedNodeTrail();
+    if (!selected?.node) return;
+    this.dispatchEvent(new CustomEvent('course-builder:select-node', {
+      bubbles: true,
+      composed: true,
+      detail: {
+        node: cloneTree([selected.node])[0],
+        path: selected.trail.join('.'),
+      },
+    }));
   }
 
   getTranscriptEditorValue(node) {
@@ -979,7 +1243,7 @@ class CourseBuilderEditor extends HTMLElement {
     }
 
     const session = window.CourseChic?.getSession?.();
-    if (!session?.nestToken) {
+    if (!session?.nestToken && !session?.token) {
       return;
     }
 
@@ -995,7 +1259,7 @@ class CourseBuilderEditor extends HTMLElement {
     const remoteCourseId = this.course.remoteCourseId;
     const stored = this.readPersisted();
 
-    if (stored?.nodes?.length && token === this.hydrationToken) {
+    if (!remoteCourseId && stored?.nodes?.length && token === this.hydrationToken) {
       this.state.nodes = stored.nodes;
       this.selectedNodeId = stored.selectedNodeId || this.selectedNodeId;
       this.course = {
@@ -1010,7 +1274,7 @@ class CourseBuilderEditor extends HTMLElement {
       return;
     }
 
-    if (!session?.nestToken) {
+    if (!session?.nestToken && !session?.token) {
       if ((!this.state.nodes || !this.state.nodes.length) && this.course.modules.length) {
         this.state.nodes = this.course.modules.map(moduleToLocalNode);
         this.selectedNodeId = this.state.nodes[0]?.id || null;
@@ -1044,8 +1308,6 @@ class CourseBuilderEditor extends HTMLElement {
     if (!this.state.nodes || !this.state.nodes.length) {
       if (this.course.modules.length) {
         this.state.nodes = this.course.modules.map(moduleToLocalNode);
-      } else {
-        this.state.nodes = createDemoCourseBuilderState().nodes;
       }
       this.selectedNodeId = this.state.nodes[0]?.id || null;
     }
@@ -1060,28 +1322,28 @@ class CourseBuilderEditor extends HTMLElement {
     const root = this.shadowRoot;
     root.addEventListener('click', (event) => {
       const button = event.target.closest('button[data-action]');
+      const node = event.target.closest('.node[data-node-id]');
+      if (!button && node) {
+        this.selectedNodeId = node.dataset.nodeId;
+        this.render();
+        this.dispatchSelection();
+        return;
+      }
       if (!button) return;
       const action = button.dataset.action;
       const nodeId = button.dataset.nodeId;
 
-      if (action === 'select') {
-        this.selectedNodeId = nodeId;
-        this.render();
-        return;
-      }
-
-      if (action === 'add-child') {
-        this.addChild(nodeId);
-        return;
-      }
-
       if (action === 'delete') {
+        const targetNode = findNodeById(this.state.nodes, nodeId);
+        if (targetNode?.children?.length) {
+          window.alert('ลบไม่ได้ เพราะบทเรียนนี้ยังมีบทเรียนย่อยอยู่');
+          return;
+        }
+        const confirmed = window.confirm('ยืนยันการลบบทเรียนนี้?');
+        if (!confirmed) {
+          return;
+        }
         this.deleteNode(nodeId);
-        return;
-      }
-
-      if (action === 'duplicate') {
-        this.duplicateNode(nodeId);
         return;
       }
 
@@ -1095,39 +1357,44 @@ class CourseBuilderEditor extends HTMLElement {
         return;
       }
 
+      if (action === 'add-child') {
+        this.addChild(nodeId);
+        return;
+      }
+
+      if (action === 'add-root') {
+        const rootNode = createLessonNode({
+          title: 'บทเรียนใหม่',
+          depth: 1,
+        });
+        rootNode.nodeType = 'lesson';
+        this.state.nodes = [...this.state.nodes, rootNode];
+        this.selectedNodeId = rootNode.id;
+        this.markDirty();
+        this.persist();
+        this.render();
+        this.scheduleAutoSave();
+        this.dispatchSelection();
+        return;
+      }
+
       if (action === 'clear-asset') {
         this.clearAsset(nodeId);
         return;
       }
 
-      if (action === 'add-root') {
-        this.addRoot();
+      if (action === 'publish-course') {
+        void this.publishCourse().catch((error) => {
+          console.error(error);
+          window.alert(error?.message || 'เผยแพร่ไม่สำเร็จ');
+        });
         return;
       }
 
-      if (action === 'save') {
-        void this.save();
-        return;
-      }
-
-      if (action === 'reset') {
-        this.resetDemo();
-        return;
-      }
-
-      if (action === 'open-preview') {
-        void this.openStudentPreview();
-        return;
-      }
-
-      if (action === 'generate-transcript') {
-        this.generateTranscriptFromPlainText(this.selectedNodeId);
-        return;
-      }
     });
 
     root.addEventListener('change', (event) => {
-      const input = event.target.closest('[data-action="title"], [data-action="asset-url"], [data-action="asset-file"], [data-action="node-type"], [data-action="estimated-minutes"], [data-action="content-type"], [data-action="description"], [data-action="plain-text"], [data-action="html-content"], [data-action="transcript-lines"]');
+      const input = event.target.closest('[data-action="title"], [data-action="course-title"], [data-action="course-description"], [data-action="asset-url"], [data-action="asset-file"], [data-action="node-type"], [data-action="estimated-minutes"], [data-action="content-type"], [data-action="description"], [data-action="plain-text"], [data-action="html-content"], [data-action="transcript-lines"]');
       if (!input) return;
       const nodeId = input.dataset.nodeId;
 
@@ -1135,6 +1402,22 @@ class CourseBuilderEditor extends HTMLElement {
         this.updateNode(nodeId, (node) => {
           node.title = input.value;
         });
+      }
+
+      if (input.dataset.action === 'course-title') {
+        this.course.title = input.value;
+        this.markDirty();
+        this.persist();
+        this.render();
+        this.scheduleAutoSave();
+      }
+
+      if (input.dataset.action === 'course-description') {
+        this.course.description = input.value;
+        this.markDirty();
+        this.persist();
+        this.render();
+        this.scheduleAutoSave();
       }
 
       if (input.dataset.action === 'asset-url') {
@@ -1212,65 +1495,21 @@ class CourseBuilderEditor extends HTMLElement {
       event.preventDefault();
     });
 
-    root.addEventListener('dragstart', (event) => {
+    root.addEventListener('keydown', (event) => {
       const node = event.target.closest('.node[data-node-id]');
       if (!node) return;
-      this.draggingNodeId = node.dataset.nodeId;
-      event.dataTransfer?.setData('text/plain', this.draggingNodeId);
-      if (event.dataTransfer) {
-        event.dataTransfer.effectAllowed = 'move';
-      }
-      this.render();
-    });
-
-    root.addEventListener('dragend', () => {
-      this.draggingNodeId = null;
-      this.dropTarget = null;
-      this.render();
-    });
-
-    root.addEventListener('dragover', (event) => {
-      const node = event.target.closest('[data-drop-zone]');
-      if (!node || !this.draggingNodeId) return;
+      if (event.key !== 'Enter' && event.key !== ' ') return;
       event.preventDefault();
-      event.dataTransfer && (event.dataTransfer.dropEffect = 'move');
-      const nextTarget = {
-        zone: node.dataset.dropZone,
-        nodeId: node.dataset.nodeId || null,
-      };
-      const hasChanged =
-        this.dropTarget?.zone !== nextTarget.zone || this.dropTarget?.nodeId !== nextTarget.nodeId;
-      this.dropTarget = nextTarget;
-      if (hasChanged) {
-        this.render();
-      }
-    });
-
-    root.addEventListener('drop', (event) => {
-      const zone = event.target.closest('[data-drop-zone]');
-      if (!zone || !this.draggingNodeId) return;
-      event.preventDefault();
-
-      const targetNodeId = zone.dataset.nodeId || null;
-      const targetZone = zone.dataset.dropZone;
-      if (targetZone === 'inside' && targetNodeId) {
-        this.moveNode(this.draggingNodeId, targetNodeId, 'inside');
-      } else if (targetZone === 'root') {
-        this.moveNodeToRoot(this.draggingNodeId);
-      } else if (targetNodeId) {
-        this.moveNode(this.draggingNodeId, targetNodeId, 'after');
-      }
-
-      this.draggingNodeId = null;
-      this.dropTarget = null;
-      this.persist();
+      this.selectedNodeId = node.dataset.nodeId;
       this.render();
+      this.dispatchSelection();
     });
+
   }
 
   readPersisted() {
     try {
-      const raw = localStorage.getItem(this.storageKey);
+      const raw = localStorage.getItem(this.storageKey) || localStorage.getItem(getLegacyStorageKey(this.course.id || this.course.remoteCourseId || null));
       return raw ? JSON.parse(raw) : null;
     } catch {
       return null;
@@ -1311,6 +1550,29 @@ class CourseBuilderEditor extends HTMLElement {
       return;
     }
     this.state.nodes = normalized;
+    this.markDirty();
+    this.persist();
+    this.render();
+    this.scheduleAutoSave();
+  }
+
+  addChild(nodeId) {
+    const next = cloneTree(this.state.nodes);
+    const parent = findNodeById(next, nodeId);
+    if (!parent) return;
+    const currentDepth = parent.depth || 1;
+    if (currentDepth >= COURSE_BUILDER_MAX_DEPTH) {
+      return;
+    }
+
+    parent.children = parent.children || [];
+    const child = createLessonNode({
+      title: 'บทเรียนย่อยใหม่',
+      depth: currentDepth + 1,
+    });
+    parent.children.push(child);
+    this.state.nodes = normalizeTreeDepths(next);
+    this.selectedNodeId = child.id;
     this.markDirty();
     this.persist();
     this.render();
@@ -1377,45 +1639,10 @@ class CourseBuilderEditor extends HTMLElement {
     }
   }
 
-  addChild(nodeId) {
-    const next = cloneTree(this.state.nodes);
-    const parent = findNodeById(next, nodeId);
-    if (!parent) return;
-    const currentDepth = parent.depth || 1;
-    if (currentDepth >= COURSE_BUILDER_MAX_DEPTH) {
-      return;
-    }
-
-    parent.children = parent.children || [];
-    parent.children.push(
-      createLessonNode({
-        title: 'บทเรียนย่อยใหม่',
-        depth: currentDepth + 1,
-      }),
-    );
-    this.state.nodes = next;
-    this.selectedNodeId = parent.children[parent.children.length - 1].id;
-    this.state.nodes = normalizeTreeDepths(this.state.nodes);
-    this.markDirty();
-    this.persist();
-    this.render();
-    this.scheduleAutoSave();
-  }
-
   deleteNode(nodeId) {
     const next = removeNodeById(this.state.nodes, nodeId);
-    this.state.nodes = next.length ? normalizeTreeDepths(next) : [createLessonNode({ title: 'New lesson', depth: 1 })];
+    this.state.nodes = next.length ? normalizeTreeDepths(next) : [];
     this.selectedNodeId = this.state.nodes[0]?.id || null;
-    this.markDirty();
-    this.persist();
-    this.render();
-    this.scheduleAutoSave();
-  }
-
-  duplicateNode(nodeId) {
-    const result = duplicateNodeById(this.state.nodes, nodeId);
-    this.state.nodes = normalizeTreeDepths(result.nodes || this.state.nodes);
-    this.selectedNodeId = result.duplicatedId || this.selectedNodeId;
     this.markDirty();
     this.persist();
     this.render();
@@ -1465,6 +1692,7 @@ class CourseBuilderEditor extends HTMLElement {
       },
       course: {
         title: this.course.title || this.state.courseTitle,
+        description: this.course.description || '',
         slug: slugify(this.course.title || this.state.courseTitle) || 'course-preview',
         nodes: cloneTree(this.state.nodes),
       },
@@ -1486,39 +1714,58 @@ class CourseBuilderEditor extends HTMLElement {
     });
   }
 
-  addRoot() {
-    const next = cloneTree(this.state.nodes);
-    next.push(createLessonNode({ title: 'New lesson', depth: 1 }));
-    this.state.nodes = normalizeTreeDepths(next);
-    this.selectedNodeId = next[next.length - 1].id;
-    this.markDirty();
-    this.persist();
-    this.render();
-    this.scheduleAutoSave();
+  buildLessonPreview() {
+    const selectedNodeTrail = this.getSelectedNodeTrail();
+    const selectedNode = selectedNodeTrail?.node || this.getSelectedNode();
+    if (!selectedNode) return null;
+
+    return {
+      lesson: {
+        ...selectedNode,
+        trail: selectedNodeTrail?.trail || [],
+        path: selectedNodeTrail?.trail?.join('.') || '',
+      },
+      course: {
+        title: this.course.title || this.state.courseTitle,
+        description: this.course.description || '',
+        slug: slugify(this.course.title || this.state.courseTitle) || 'course-preview',
+        nodes: cloneTree(this.state.nodes),
+      },
+    };
   }
 
   persist() {
     try {
+      this.state.nodes = normalizeTreeTitles(this.state.nodes);
       localStorage.setItem(
         this.storageKey,
         JSON.stringify({
           course: this.course,
           nodes: this.state.nodes,
           selectedNodeId: this.selectedNodeId,
-        }),
-      );
+          }),
+        );
     } catch {
       // ignore storage quota issues and keep working in-memory
+    }
+
+    const preview = this.buildLessonPreview();
+    if (preview) {
+      if (window.CourseChic?.setLessonPreview) {
+        window.CourseChic.setLessonPreview(preview);
+      } else {
+        localStorage.setItem('coursechic.courseBuilder.lessonPreview', JSON.stringify(preview));
+      }
     }
   }
 
   restore(silent = false) {
     try {
-      const raw = localStorage.getItem(this.storageKey);
+      const raw = localStorage.getItem(this.storageKey) || localStorage.getItem(getLegacyStorageKey(this.course.id || this.course.remoteCourseId || null));
       if (!raw) return;
       const parsed = JSON.parse(raw);
       if (parsed?.nodes?.length) {
-        this.state.nodes = parsed.nodes;
+        this.state.nodes = normalizeTreeTitles(parsed.nodes);
       }
       if (parsed?.course) {
         this.course = parsed.course;
@@ -1568,8 +1815,16 @@ class CourseBuilderEditor extends HTMLElement {
 
   validateTree() {
     const issues = [];
+    const courseTitle = String(this.course.title || '').trim();
+    const courseDescription = String(this.course.description || '').trim();
+    if (!courseTitle || courseTitle === 'คอร์สใหม่') {
+      issues.push({ type: 'error', text: 'กรุณาตั้งชื่อคอร์สก่อนเผยแพร่' });
+    }
+    if (!courseDescription) {
+      issues.push({ type: 'error', text: 'กรุณาใส่คำอธิบายคอร์สก่อนเผยแพร่' });
+    }
     if (!this.state.nodes.length) {
-      issues.push({ type: 'error', text: 'ไม่มีบทเรียนในคอร์ส' });
+      issues.push({ type: 'error', text: 'คอร์สนี้ยังไม่มีบทเรียน ให้กด “เพิ่มบทเรียน” เพื่อเริ่มต้น' });
     }
 
     const walk = (nodes) => {
@@ -1602,9 +1857,13 @@ class CourseBuilderEditor extends HTMLElement {
     }
 
     const syncResult = await this.save();
-    const session = window.CourseChic?.getSession?.();
-    if (!session?.nestToken) {
-      return syncResult;
+    let session = window.CourseChic?.getSession?.();
+    if (!session?.nestToken && !session?.token && typeof window.CourseChic?.ensureNestSession === 'function') {
+      await window.CourseChic.ensureNestSession().catch(() => null);
+      session = window.CourseChic?.getSession?.();
+    }
+    if (!session?.nestToken && !session?.token) {
+      throw new Error('ต้องลงชื่อเข้าใช้ backend ฝั่งคอร์สก่อนจึงจะเผยแพร่ได้');
     }
 
     if (!this.course.remoteCourseId) {
@@ -1613,7 +1872,7 @@ class CourseBuilderEditor extends HTMLElement {
 
     const remoteCourseId = this.course.remoteCourseId;
     if (!remoteCourseId) {
-      return syncResult;
+      throw new Error('ยังสร้างคอร์สปลายทางไม่สำเร็จ');
     }
 
     await window.CourseChic.requestNest(`/courses/${remoteCourseId}/publish`, {
@@ -1640,33 +1899,9 @@ class CourseBuilderEditor extends HTMLElement {
     return syncResult;
   }
 
-  resetDemo() {
-    const seed = createDemoCourseBuilderState();
-    this.state = {
-      courseTitle: seed.courseTitle,
-      courseStatus: seed.courseStatus,
-      nodes: seed.nodes,
-    };
-    this.course = {
-      ...this.course,
-      remoteCourseId: null,
-      title: seed.courseTitle,
-      status: seed.courseStatus,
-      description: '',
-      modules: [],
-    };
-    this.selectedNodeId = seed.nodes[0]?.id || null;
-    this.storageKey = getStorageKey(this.course.id);
-    this.syncStatus = 'local';
-    this.isDirty = false;
-    this.lastSavedAt = null;
-    this.persist();
-    this.render();
-  }
-
   async ensureRemoteCourse() {
     const session = window.CourseChic?.getSession?.();
-    if (!session?.nestToken) {
+    if (!session?.nestToken && !session?.token) {
       return null;
     }
 
@@ -1725,7 +1960,7 @@ class CourseBuilderEditor extends HTMLElement {
 
   async syncToBackend() {
     const session = window.CourseChic?.getSession?.();
-    if (!session?.nestToken) {
+    if (!session?.nestToken && !session?.token) {
       return { mode: 'local' };
     }
 
@@ -1734,23 +1969,49 @@ class CourseBuilderEditor extends HTMLElement {
       return { mode: 'local' };
     }
 
-    await window.CourseChic.requestNest(`/courses/${remoteCourseId}/tree`, {
-      method: 'DELETE',
+    await window.CourseChic.requestNest(`/courses/${remoteCourseId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        title: this.course.title || this.state.courseTitle,
+        description: this.course.description || '',
+      }),
     });
 
+    const idRemap = new Map();
     const createTree = async (nodes, parentId = null) => {
       for (const node of nodes) {
-        const created = await window.CourseChic.requestNest(`/courses/${remoteCourseId}/nodes`, {
-          method: 'POST',
-          body: JSON.stringify({
-            parentId,
-            nodeType: this.getNodeType(node),
-            title: node.title,
-            estimatedMinutes: Number(node.estimatedMinutes || 0),
-          }),
-        });
-
-        const remoteNodeId = created?.data?.id ?? created?.id;
+        const hasRemoteId = /^\d+$/.test(String(node.id || ''));
+        let remoteNodeId = hasRemoteId ? String(node.id) : null;
+        if (hasRemoteId) {
+          await window.CourseChic.requestNest(`/lesson-nodes/${remoteNodeId}`, {
+            method: 'PATCH',
+            body: JSON.stringify({
+              parentId,
+              nodeType: this.getNodeType(node),
+              title: node.title,
+              estimatedMinutes: Number(node.estimatedMinutes || 0),
+            }),
+          });
+        } else {
+          const created = await window.CourseChic.requestNest(`/courses/${remoteCourseId}/nodes`, {
+            method: 'POST',
+            body: JSON.stringify({
+              parentId,
+              nodeType: this.getNodeType(node),
+              title: node.title,
+              estimatedMinutes: Number(node.estimatedMinutes || 0),
+            }),
+          });
+          remoteNodeId = created?.data?.id ?? created?.id;
+          const previousId = String(node.id || '');
+          if (previousId && remoteNodeId) {
+            idRemap.set(previousId, String(remoteNodeId));
+          }
+          node.id = String(remoteNodeId);
+          if (String(this.selectedNodeId || '') === previousId) {
+            this.selectedNodeId = String(remoteNodeId);
+          }
+        }
         if (node.description || node.plainText || node.htmlContent || node.contentType) {
           await window.CourseChic.requestNest(`/lesson-nodes/${remoteNodeId}/content`, {
             method: 'PUT',
@@ -1800,6 +2061,9 @@ class CourseBuilderEditor extends HTMLElement {
 
     await createTree(this.state.nodes);
     this.course.remoteCourseId = remoteCourseId;
+    if (idRemap.size && String(this.selectedNodeId || '') && idRemap.has(String(this.selectedNodeId))) {
+      this.selectedNodeId = idRemap.get(String(this.selectedNodeId)) || this.selectedNodeId;
+    }
     this.persist();
     return {
       mode: 'remote',
@@ -1814,12 +2078,18 @@ class CourseBuilderEditor extends HTMLElement {
     const depthReached = maxDepth(this.state.nodes);
     const courseTitle = this.course.title || this.state.courseTitle;
     const courseStatus = this.course.status || this.state.courseStatus;
+  const previewModeLabel = this.course.remoteCourseId ? 'คอร์สจริง' : 'พรีวิว draft';
+  const previewModeClass = this.course.remoteCourseId ? 'sync-remote' : 'sync-draft';
+  const publishStateLabel = this.course.status === 'published'
+    ? 'เผยแพร่แล้ว'
+    : this.course.remoteCourseId
+      ? 'ซิงก์แล้ว'
+      : 'ฉบับร่าง';
     const selectedNodeTrail = this.getSelectedNodeTrail();
     const selectedNode = selectedNodeTrail?.node || this.getSelectedNode();
-    const selectedPath = selectedNodeTrail?.trail?.join('.') || '';
-    const validationIssues = this.validateTree();
     const previewLines = makePreviewLines(selectedNode);
     const previewAsset = makeAssetPreview(selectedNode);
+    const validationIssues = this.validateTree();
     const syncLabel =
       this.syncStatus === 'saving'
         ? 'กำลังบันทึก...'
@@ -1831,6 +2101,8 @@ class CourseBuilderEditor extends HTMLElement {
             ? 'ซิงก์กับ backend แล้ว'
             : 'ฉบับร่างในเครื่อง';
     const dirtyLabel = this.isDirty ? 'ยังไม่ได้บันทึก' : this.lastSavedAt ? `บันทึกแล้ว ${new Date(this.lastSavedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'ยังไม่มีการแก้ไข';
+    const isEmptyCourse = !this.state.nodes.length;
+    const courseName = this.course.title || this.state.courseTitle || 'คอร์สใหม่';
 
     this.shadowRoot.innerHTML = `
       <style>${styles}</style>
@@ -1838,19 +2110,35 @@ class CourseBuilderEditor extends HTMLElement {
         <div class="builder-head">
           <div class="title-block">
             <div class="meta">
-              <span class="pill">${escapeHtml(courseStatus)}</span>
-              <span class="pill subtle">ลึกสุด ${COURSE_BUILDER_MAX_DEPTH} ชั้น</span>
+              <span class="pill ${previewModeClass}">${escapeHtml(previewModeLabel)}</span>
               <span class="pill subtle">${escapeHtml(syncLabel)}</span>
-              <span class="pill subtle">${escapeHtml(dirtyLabel)}</span>
+              <span class="pill subtle">${escapeHtml(publishStateLabel)}</span>
             </div>
             <h3>${escapeHtml(courseTitle)}</h3>
-            <p>แก้โครงสร้างบทเรียนแบบ Nested, ใส่ PDF หรือ external URL ได้ในทุกบทย่อย</p>
+            <div class="course-title-field">
+              <label for="courseTitleInput">ชื่อคอร์ส</label>
+              <input
+                id="courseTitleInput"
+                class="course-title-input"
+                data-action="course-title"
+                value="${escapeHtml(courseName)}"
+                placeholder="ตั้งชื่อคอร์ส เช่น เคมีพื้นฐาน"
+              />
+            </div>
+            <div class="course-description-field">
+              <label for="courseDescriptionInput">คำอธิบายคอร์ส</label>
+              <textarea
+                id="courseDescriptionInput"
+                class="course-description-textarea"
+                data-action="course-description"
+                placeholder="อธิบายสิ่งที่ผู้เรียนจะได้เรียน ระดับของคอร์ส หรือผลลัพธ์ที่คาดหวัง"
+              >${escapeHtml(this.course.description || '')}</textarea>
+            </div>
+            <p>จัดโครงบทเรียนและแก้เนื้อหาได้จากจุดเดียว ต้องมีชื่อและคำอธิบายคอร์สก่อนเผยแพร่</p>
           </div>
           <div class="toolbar">
-            <button class="button primary" type="button" data-action="add-root">+ เพิ่มบทเรียนหลัก</button>
-            <button class="button" type="button" data-action="open-preview" ${selectedNode ? '' : 'disabled'}>Open Student Preview</button>
-            <button class="button" type="button" data-action="save">บันทึกฉบับร่าง</button>
-            <button class="button" type="button" data-action="reset">รีเซ็ตเดโม</button>
+            <button class="button primary" type="button" data-action="add-root">+ เพิ่มบทเรียน</button>
+            <button class="button secondary-soft" type="button" data-action="publish-course">เผยแพร่</button>
           </div>
         </div>
 
@@ -1863,14 +2151,26 @@ class CourseBuilderEditor extends HTMLElement {
         <div class="builder-body">
           <div class="builder-main">
             <div class="builder-tree ${this.dropTarget?.zone === 'root' ? 'drop-active' : ''} ${this.draggingNodeId ? 'droppable' : ''}" data-drop-zone="root">
-              ${this.state.nodes.map((node, index) => renderNode(node, [index + 1], this.selectedNodeId, COURSE_BUILDER_MAX_DEPTH, this.draggingNodeId, this.dropTarget)).join('')}
+              ${isEmptyCourse ? `
+                <div class="empty-workspace">
+                  <div>
+                    <span class="pill subtle">เริ่มจากศูนย์</span>
+                    <h4>คอร์สนี้ยังไม่มีบทเรียน</h4>
+                    <p>กด “เพิ่มบทเรียน” เพื่อสร้างโครงแรก จากนั้นค่อยใส่บทเรียนย่อย เนื้อหา และวิดีโอในแต่ละบทเรียน</p>
+                  </div>
+                  <div class="empty-actions">
+                    <button class="button primary" type="button" data-action="add-root">+ เพิ่มบทเรียนแรก</button>
+                    <button class="button secondary-soft" type="button" data-action="publish-course" disabled>เผยแพร่ได้เมื่อมีบทเรียน</button>
+                  </div>
+                </div>
+              ` : this.state.nodes.map((node, index) => renderNode(node, [index + 1], this.selectedNodeId, COURSE_BUILDER_MAX_DEPTH, this.draggingNodeId, this.dropTarget)).join('')}
             </div>
           </div>
 
           <aside class="details-panel">
             <div class="details-head">
               <h4>${selectedNode ? escapeHtml(selectedNode.title || 'บทเรียนที่เลือก') : 'เลือกบทเรียน'}</h4>
-              <p>${selectedNode ? `เส้นทาง ${selectedPath || '-'} • ชั้น ${selectedNode.depth || 1}` : 'คลิกการ์ดบทเรียนเพื่อแก้ metadata, ประเภทเนื้อหา, และความพร้อมก่อนเผยแพร่'}</p>
+              <p>${selectedNode ? `เส้นทาง ${selectedNodeTrail?.trail?.join('.') || '-'} • ชั้น ${selectedNode.depth || 1}` : 'ยังไม่มีบทเรียน ให้เริ่มจากปุ่ม “เพิ่มบทเรียนแรก” ทางซ้าย'}</p>
             </div>
 
             <div class="details-form">
@@ -1888,7 +2188,7 @@ class CourseBuilderEditor extends HTMLElement {
               <div class="field">
                 <label>ประเภทโหนด</label>
                 <select data-action="node-type" data-node-id="${selectedNode?.id || ''}" ${selectedNode ? '' : 'disabled'}>
-                  ${['section', 'lesson', 'quiz', 'assignment'].map((type) => `<option value="${type}" ${selectedNode?.nodeType === type ? 'selected' : ''}>${type}</option>`).join('')}
+                  ${['section', 'lesson', 'quiz', 'assignment'].map((type) => `<option value="${type}" ${selectedNode?.nodeType === type ? 'selected' : ''}>${type === 'assignment' ? 'การบ้าน' : type}</option>`).join('')}
                 </select>
               </div>
 
@@ -1965,31 +2265,39 @@ class CourseBuilderEditor extends HTMLElement {
                 ${validationIssues.length ? validationIssues.map((issue) => `<li>${escapeHtml(issue.text)}</li>`).join('') : '<li>โครงสร้างพร้อมเผยแพร่</li>'}
               </ul>
             </div>
+          </aside>
 
+          <aside class="preview-panel-wrap">
             <div class="preview-panel">
               <div class="eyebrow">ตัวอย่างสด</div>
               <h5>${selectedNode ? escapeHtml(selectedNode.title || 'บทเรียนที่เลือก') : 'เลือกบทเรียน'}</h5>
               <p>${selectedNode ? escapeHtml(selectedNode.description || 'ตัวอย่างนี้สะท้อนสิ่งที่นักเรียนจะเห็นในหน้าบทเรียน') : 'เลือกโหนดจากต้นไม้เพื่อดูตัวอย่างตรงนี้'}</p>
-
-      <div class="preview-card">
-        <div class="preview-meta">
-          <span class="preview-chip">${escapeHtml(selectedNode?.nodeType || 'lesson')}</span>
-          <span class="preview-chip">${escapeHtml(`~${selectedNode?.estimatedMinutes || 0} min`)}</span>
-          <span class="preview-chip">${escapeHtml(selectedNode?.contentType || 'article')}</span>
-        </div>
-        <div class="preview-asset">
-          <strong>${escapeHtml(previewAsset.label)}</strong>
-          <span>${escapeHtml(previewAsset.value)}</span>
-          <small style="color: rgba(226,232,240,.76);">${escapeHtml(previewAsset.hint)}</small>
-        </div>
-        <ul class="preview-list">
-          ${previewLines.map((line) => `<li>${escapeHtml(line)}</li>`).join('')}
-        </ul>
-        <div class="toolbar" style="justify-content: flex-start;">
-          <button class="button primary" type="button" data-action="open-preview" ${selectedNode ? '' : 'disabled'}>Open Student Preview</button>
-        </div>
-      </div>
-    </div>
+              <div class="preview-meta-row">
+                <span class="pill">Path ${escapeHtml(selectedNodeTrail?.trail?.join('.') || '-')}</span>
+                <span class="pill">${escapeHtml(selectedNode?.nodeType || 'lesson')}</span>
+                <span class="pill">${escapeHtml(`~${selectedNode?.estimatedMinutes || 0} min`)}</span>
+              </div>
+              <div class="preview-summary">
+                <div class="preview-stat">
+                  <span>เนื้อหา</span>
+                  <strong>${escapeHtml(selectedNode?.contentType || 'article')}</strong>
+                </div>
+                <div class="preview-stat">
+                  <span>ไฟล์แนบ</span>
+                  <strong>${escapeHtml(previewAsset.label)}</strong>
+                </div>
+              </div>
+              <div class="preview-card">
+                <div class="preview-asset">
+                  <strong>${escapeHtml(previewAsset.label)}</strong>
+                  <span>${escapeHtml(previewAsset.value)}</span>
+                  <small style="color: rgba(226,232,240,.76);">${escapeHtml(previewAsset.hint)}</small>
+                </div>
+                <ul class="preview-list">
+                  ${previewLines.map((line) => `<li>${escapeHtml(line)}</li>`).join('')}
+                </ul>
+              </div>
+            </div>
           </aside>
         </div>
       </section>

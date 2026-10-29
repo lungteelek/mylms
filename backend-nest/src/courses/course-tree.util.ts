@@ -2,6 +2,8 @@ import { BadRequestException } from '@nestjs/common';
 import { slugify } from '../common/utils/slugify';
 import { LessonNodeRow, LessonNodeTree } from './types/course.types';
 
+export const MAX_LESSON_DEPTH = 4;
+
 export function buildLessonTree(rows: LessonNodeRow[]): LessonNodeTree[] {
   const map = new Map<string, LessonNodeTree>();
   const roots: LessonNodeTree[] = [];
@@ -54,5 +56,34 @@ export function ensureNoTreeCycles(
       throw new BadRequestException('Move would create a cycle in the lesson tree');
     }
     cursor = nodeMap.get(cursor)?.parentId;
+  }
+}
+
+export function ensureValidNodePlacement(
+  nodeType: LessonNodeRow['nodeType'],
+  nextParentId: string | null | undefined,
+  nextParentNode?: LessonNodeRow | null,
+) {
+  const normalizedNodeType = nodeType;
+  const parentType = nextParentNode?.nodeType;
+  const parentDepth = nextParentNode?.depth ?? null;
+
+  if (normalizedNodeType === 'section') {
+    if (nextParentId) {
+      throw new BadRequestException('บทเรียนหลักสร้างได้เฉพาะใต้ root เท่านั้น');
+    }
+    return;
+  }
+
+  if (normalizedNodeType === 'lesson') {
+    if (!nextParentId) {
+      throw new BadRequestException('บทย่อยต้องเลือกบทเรียนแม่ก่อนบันทึก');
+    }
+    if (!nextParentNode || (parentType !== 'section' && parentType !== 'lesson')) {
+      throw new BadRequestException('บทย่อยต้องอยู่ใต้บทเรียนหรือบทย่อยที่มีอยู่แล้ว');
+    }
+    if (parentDepth !== null && parentDepth >= MAX_LESSON_DEPTH) {
+      throw new BadRequestException(`บทย่อยซ้อนได้สูงสุด ${MAX_LESSON_DEPTH} ระดับ`);
+    }
   }
 }

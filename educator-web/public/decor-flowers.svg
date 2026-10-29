@@ -1,0 +1,82 @@
+<svg width="1600" height="1200" viewBox="0 0 1600 1200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="petalPink" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(0 0) rotate(90) scale(60 60)">
+      <stop stop-color="#ffd7ea"/>
+      <stop offset="1" stop-color="#ffb9d7"/>
+    </radialGradient>
+    <radialGradient id="petalBlue" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(0 0) rotate(90) scale(60 60)">
+      <stop stop-color="#d6efff"/>
+      <stop offset="1" stop-color="#9edaff"/>
+    </radialGradient>
+    <radialGradient id="petalLemon" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(0 0) rotate(90) scale(60 60)">
+      <stop stop-color="#fff3bb"/>
+      <stop offset="1" stop-color="#ffde77"/>
+    </radialGradient>
+    <symbol id="flower-pink" viewBox="-72 -72 144 144">
+      <g>
+        <ellipse cx="0" cy="-42" rx="20" ry="36" fill="url(#petalPink)"/>
+        <ellipse cx="0" cy="42" rx="20" ry="36" fill="url(#petalPink)"/>
+        <ellipse cx="42" cy="0" rx="36" ry="20" fill="url(#petalPink)"/>
+        <ellipse cx="-42" cy="0" rx="36" ry="20" fill="url(#petalPink)"/>
+        <ellipse cx="30" cy="-30" rx="18" ry="32" transform="rotate(45 30 -30)" fill="url(#petalPink)"/>
+        <ellipse cx="-30" cy="30" rx="18" ry="32" transform="rotate(45 -30 30)" fill="url(#petalPink)"/>
+        <circle cx="0" cy="0" r="18" fill="#fff5a8"/>
+        <circle cx="0" cy="0" r="7" fill="#ff9bcb"/>
+      </g>
+    </symbol>
+    <symbol id="flower-blue" viewBox="-72 -72 144 144">
+      <g>
+        <ellipse cx="0" cy="-42" rx="20" ry="36" fill="url(#petalBlue)"/>
+        <ellipse cx="0" cy="42" rx="20" ry="36" fill="url(#petalBlue)"/>
+        <ellipse cx="42" cy="0" rx="36" ry="20" fill="url(#petalBlue)"/>
+        <ellipse cx="-42" cy="0" rx="36" ry="20" fill="url(#petalBlue)"/>
+        <ellipse cx="30" cy="-30" rx="18" ry="32" transform="rotate(45 30 -30)" fill="url(#petalBlue)"/>
+        <ellipse cx="-30" cy="30" rx="18" ry="32" transform="rotate(45 -30 30)" fill="url(#petalBlue)"/>
+        <circle cx="0" cy="0" r="18" fill="#fff7d1"/>
+        <circle cx="0" cy="0" r="7" fill="#76b9ff"/>
+      </g>
+    </symbol>
+    <symbol id="flower-lemon" viewBox="-72 -72 144 144">
+      <g>
+        <ellipse cx="0" cy="-42" rx="20" ry="36" fill="url(#petalLemon)"/>
+        <ellipse cx="0" cy="42" rx="20" ry="36" fill="url(#petalLemon)"/>
+        <ellipse cx="42" cy="0" rx="36" ry="20" fill="url(#petalLemon)"/>
+        <ellipse cx="-42" cy="0" rx="36" ry="20" fill="url(#petalLemon)"/>
+        <ellipse cx="30" cy="-30" rx="18" ry="32" transform="rotate(45 30 -30)" fill="url(#petalLemon)"/>
+        <ellipse cx="-30" cy="30" rx="18" ry="32" transform="rotate(45 -30 30)" fill="url(#petalLemon)"/>
+        <circle cx="0" cy="0" r="18" fill="#fff9c9"/>
+        <circle cx="0" cy="0" r="7" fill="#e9b630"/>
+      </g>
+    </symbol>
+  </defs>
+  <rect width="1600" height="1200" fill="transparent"/>
+  <g opacity="0.88">
+    <path d="M100 1120C170 990 240 950 336 934C272 1004 216 1090 154 1184" stroke="#9edaff" stroke-opacity="0.45" stroke-width="8" stroke-linecap="round"/>
+    <path d="M1340 72C1230 132 1160 218 1120 320C1218 266 1310 196 1424 110" stroke="#ffb9d7" stroke-opacity="0.4" stroke-width="8" stroke-linecap="round"/>
+    <path d="M146 1102C164 1030 190 990 246 944" stroke="#8bd3a8" stroke-opacity="0.4" stroke-width="5" stroke-linecap="round"/>
+    <path d="M1320 118C1294 190 1262 238 1210 286" stroke="#8bd3a8" stroke-opacity="0.4" stroke-width="5" stroke-linecap="round"/>
+  </g>
+  <g opacity="0.92">
+    <use href="#flower-pink" x="110" y="1040" width="112" height="112"/>
+    <use href="#flower-blue" x="220" y="980" width="84" height="84" opacity="0.8"/>
+    <use href="#flower-lemon" x="330" y="1060" width="72" height="72" opacity="0.78"/>
+
+    <use href="#flower-blue" x="1300" y="68" width="114" height="114"/>
+    <use href="#flower-pink" x="1188" y="148" width="86" height="86" opacity="0.85"/>
+    <use href="#flower-lemon" x="1440" y="132" width="72" height="72" opacity="0.8"/>
+
+    <use href="#flower-pink" x="126" y="128" width="80" height="80" opacity="0.76"/>
+    <use href="#flower-lemon" x="238" y="72" width="68" height="68" opacity="0.74"/>
+    <use href="#flower-blue" x="320" y="156" width="64" height="64" opacity="0.74"/>
+
+    <use href="#flower-lemon" x="1164" y="980" width="86" height="86" opacity="0.82"/>
+    <use href="#flower-pink" x="1290" y="1062" width="92" height="92" opacity="0.82"/>
+    <use href="#flower-blue" x="1410" y="964" width="72" height="72" opacity="0.76"/>
+  </g>
+  <g opacity="0.55">
+    <circle cx="204" cy="1104" r="12" fill="#ffffff"/>
+    <circle cx="1468" cy="150" r="12" fill="#ffffff"/>
+    <circle cx="252" cy="90" r="10" fill="#ffffff"/>
+    <circle cx="1210" cy="1024" r="10" fill="#ffffff"/>
+  </g>
+</svg>

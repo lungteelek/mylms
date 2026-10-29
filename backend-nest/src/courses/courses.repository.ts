@@ -15,18 +15,55 @@ function normalizeId(value: RawId): string {
   return typeof value === 'bigint' ? value.toString() : String(value);
 }
 
+function parseTranscriptSeekSeconds(value: string) {
+  const parts = String(value || '')
+    .trim()
+    .split(':')
+    .map((part) => Number(part));
+  if (!parts.length || parts.some((part) => !Number.isFinite(part) || part < 0)) return null;
+  if (parts.length === 1) return parts[0];
+  if (parts.length === 2) return parts[0] * 60 + parts[1];
+  if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
+  return null;
+}
+
 @Injectable()
 export class CoursesRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   async listCourses(tenantId: string): Promise<CourseRow[]> {
     const rows = await this.prisma.$queryRaw<
-      Array<{ id: RawId; title: string; slug: string; status: string }>
+      Array<{
+        id: RawId;
+        title: string;
+        slug: string;
+        status: string;
+        description: string | null;
+        subject: string | null;
+        level: string | null;
+        enrollment_count: bigint | number;
+        created_at: Date;
+        updated_at: Date;
+      }>
     >(Prisma.sql`
-      SELECT id, title, slug, status
-      FROM courses
-      WHERE tenant_id = ${BigInt(tenantId)}
-      ORDER BY updated_at DESC, id DESC
+      SELECT
+        c.id,
+        c.title,
+        c.slug,
+        c.status,
+        c.description,
+        c.subject,
+        c.level,
+        (
+          SELECT COUNT(*)
+          FROM enrollments e
+          WHERE e.course_id = c.id AND e.tenant_id = c.tenant_id
+        ) AS enrollment_count,
+        c.created_at,
+        c.updated_at
+      FROM courses c
+      WHERE c.tenant_id = ${BigInt(tenantId)}
+      ORDER BY c.course_order ASC, c.updated_at DESC, c.id DESC
     `);
 
     return rows.map((row) => ({
@@ -34,16 +71,56 @@ export class CoursesRepository {
       title: row.title,
       slug: row.slug,
       status: row.status,
+      description: row.description,
+      subject: row.subject,
+      level: row.level,
+      enrollmentCount: Number(row.enrollment_count || 0),
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
     }));
   }
 
   async createCourse(tenantId: string, body: CreateCourseDto): Promise<CourseRow> {
     const rows = await this.prisma.$queryRaw<
-      Array<{ id: RawId; title: string; slug: string; status: string }>
+      Array<{
+        id: RawId;
+        title: string;
+        slug: string;
+        status: string;
+        description: string | null;
+        subject: string | null;
+        level: string | null;
+        enrollment_count: bigint | number;
+        created_at: Date;
+        updated_at: Date;
+      }>
     >(Prisma.sql`
-      INSERT INTO courses (tenant_id, title, slug, description, subject, level, status, created_at, updated_at)
-      VALUES (${BigInt(tenantId)}, ${body.title}, ${body.slug}, ${body.description ?? null}, ${body.subject ?? null}, ${body.level ?? null}, 'draft', now(), now())
-      RETURNING id, title, slug, status
+      WITH next_order AS (
+        SELECT COALESCE(MAX(course_order), -1) + 1 AS value
+        FROM courses
+        WHERE tenant_id = ${BigInt(tenantId)}
+      ),
+      inserted AS (
+        INSERT INTO courses (tenant_id, title, slug, description, subject, level, status, course_order, created_at, updated_at)
+      VALUES (${BigInt(tenantId)}, ${body.title}, ${body.slug}, ${body.description ?? null}, ${body.subject ?? null}, ${body.level ?? null}, 'draft', (SELECT value FROM next_order), now(), now())
+        RETURNING id, title, slug, status, description, subject, level, tenant_id, created_at, updated_at
+      )
+      SELECT
+        inserted.id,
+        inserted.title,
+        inserted.slug,
+        inserted.status,
+        inserted.description,
+        inserted.subject,
+        inserted.level,
+        (
+          SELECT COUNT(*)
+          FROM enrollments e
+          WHERE e.course_id = inserted.id AND e.tenant_id = inserted.tenant_id
+        ) AS enrollment_count,
+        inserted.created_at,
+        inserted.updated_at
+      FROM inserted
     `);
 
     return {
@@ -51,16 +128,68 @@ export class CoursesRepository {
       title: rows[0].title,
       slug: rows[0].slug,
       status: rows[0].status,
+      description: rows[0].description,
+      subject: rows[0].subject,
+      level: rows[0].level,
+      enrollmentCount: Number(rows[0].enrollment_count || 0),
+      createdAt: rows[0].created_at,
+      updatedAt: rows[0].updated_at,
     };
+  }
+
+  async reorderCourses(tenantId: string, orderedCourseIds: string[]): Promise<number> {
+    if (!orderedCourseIds.length) {
+      return 0;
+    }
+
+    const ids = orderedCourseIds.map((courseId) => BigInt(courseId));
+    const updated = await this.prisma.$executeRaw(Prisma.sql`
+      WITH ordered_ids AS (
+        SELECT id, ord - 1 AS next_order
+        FROM UNNEST(ARRAY[${Prisma.join(ids)}]::bigint[]) WITH ORDINALITY AS input(id, ord)
+      )
+      UPDATE courses c
+      SET course_order = ordered_ids.next_order,
+          updated_at = now()
+      FROM ordered_ids
+      WHERE c.tenant_id = ${BigInt(tenantId)} AND c.id = ordered_ids.id
+    `);
+
+    return Number(updated || 0);
   }
 
   async findCourseById(tenantId: string, courseId: string): Promise<CourseRow | null> {
     const rows = await this.prisma.$queryRaw<
-      Array<{ id: RawId; title: string; slug: string; status: string }>
+      Array<{
+        id: RawId;
+        title: string;
+        slug: string;
+        status: string;
+        description: string | null;
+        subject: string | null;
+        level: string | null;
+        enrollment_count: bigint | number;
+        created_at: Date;
+        updated_at: Date;
+      }>
     >(Prisma.sql`
-      SELECT id, title, slug, status
-      FROM courses
-      WHERE tenant_id = ${BigInt(tenantId)} AND id = ${BigInt(courseId)}
+      SELECT
+        c.id,
+        c.title,
+        c.slug,
+        c.status,
+        c.description,
+        c.subject,
+        c.level,
+        (
+          SELECT COUNT(*)
+          FROM enrollments e
+          WHERE e.course_id = c.id AND e.tenant_id = c.tenant_id
+        ) AS enrollment_count,
+        c.created_at,
+        c.updated_at
+      FROM courses c
+      WHERE c.tenant_id = ${BigInt(tenantId)} AND c.id = ${BigInt(courseId)}
       LIMIT 1
     `);
 
@@ -73,6 +202,123 @@ export class CoursesRepository {
       title: rows[0].title,
       slug: rows[0].slug,
       status: rows[0].status,
+      description: rows[0].description,
+      subject: rows[0].subject,
+      level: rows[0].level,
+      enrollmentCount: Number(rows[0].enrollment_count || 0),
+      createdAt: rows[0].created_at,
+      updatedAt: rows[0].updated_at,
+    };
+  }
+
+  async findTenantSlug(tenantId: string): Promise<string | null> {
+    const tenant = await this.prisma.organization.findUnique({
+      where: { id: Number(tenantId) },
+      select: { slug: true },
+    });
+    return tenant?.slug || null;
+  }
+
+  async findLessonNodeById(tenantId: string, lessonNodeId: string): Promise<{
+    id: string;
+    title: string;
+    courseId: string;
+    tenantId: string;
+  } | null> {
+    const rows = await this.prisma.$queryRaw<
+      Array<{
+        id: RawId;
+        title: string;
+        course_id: RawId;
+        tenant_id: RawId;
+      }>
+    >(Prisma.sql`
+      SELECT id, title, course_id, tenant_id
+      FROM lesson_nodes
+      WHERE tenant_id = ${BigInt(tenantId)} AND id = ${BigInt(lessonNodeId)}
+      LIMIT 1
+    `);
+
+    if (!rows[0]) {
+      return null;
+    }
+
+    return {
+      id: normalizeId(rows[0].id),
+      title: rows[0].title,
+      courseId: normalizeId(rows[0].course_id),
+      tenantId: normalizeId(rows[0].tenant_id),
+    };
+  }
+
+  async updateCourse(
+    tenantId: string,
+    courseId: string,
+    body: {
+      title?: string | null;
+      description?: string | null;
+      subject?: string | null;
+      level?: string | null;
+    },
+  ): Promise<CourseRow | null> {
+    const rows = await this.prisma.$queryRaw<
+      Array<{
+        id: RawId;
+        title: string;
+        slug: string;
+        status: string;
+        description: string | null;
+        subject: string | null;
+        level: string | null;
+        enrollment_count: bigint | number;
+        created_at: Date;
+        updated_at: Date;
+      }>
+    >(Prisma.sql`
+      WITH updated AS (
+        UPDATE courses
+      SET
+        title = COALESCE(${body.title ?? null}, title),
+        description = COALESCE(${body.description ?? null}, description),
+        subject = COALESCE(${body.subject ?? null}, subject),
+        level = COALESCE(${body.level ?? null}, level),
+        updated_at = now()
+        WHERE tenant_id = ${BigInt(tenantId)} AND id = ${BigInt(courseId)}
+        RETURNING id, title, slug, status, description, subject, level, tenant_id, created_at, updated_at
+      )
+      SELECT
+        updated.id,
+        updated.title,
+        updated.slug,
+        updated.status,
+        updated.description,
+        updated.subject,
+        updated.level,
+        (
+          SELECT COUNT(*)
+          FROM enrollments e
+          WHERE e.course_id = updated.id AND e.tenant_id = updated.tenant_id
+        ) AS enrollment_count,
+        updated.created_at,
+        updated.updated_at
+      FROM updated
+    `);
+
+    if (!rows[0]) {
+      return null;
+    }
+
+    return {
+      id: normalizeId(rows[0].id),
+      title: rows[0].title,
+      slug: rows[0].slug,
+      status: rows[0].status,
+      description: rows[0].description,
+      subject: rows[0].subject,
+      level: rows[0].level,
+      enrollmentCount: Number(rows[0].enrollment_count || 0),
+      createdAt: rows[0].created_at,
+      updatedAt: rows[0].updated_at,
     };
   }
 
@@ -88,12 +334,40 @@ export class CoursesRepository {
         sort_order: number;
         estimated_minutes: number;
         is_published: boolean;
+        playback_id: string | null;
+        video_status: LessonNodeRow['videoStatus'];
+        video_asset_id: RawId | null;
+        provider_asset_id: string | null;
+        hls_url: string | null;
+        poster_url: string | null;
       }>
     >(Prisma.sql`
-      SELECT id, parent_id, node_type, path::text as path, title, depth, sort_order, estimated_minutes, is_published
-      FROM lesson_nodes
-      WHERE tenant_id = ${BigInt(tenantId)} AND course_id = ${BigInt(courseId)}
-      ORDER BY path ASC, sort_order ASC
+      SELECT
+        ln.id,
+        ln.parent_id,
+        ln.node_type,
+        ln.path::text as path,
+        ln.title,
+        ln.depth,
+        ln.sort_order,
+        ln.estimated_minutes,
+        ln.is_published,
+        video.playback_id,
+        video.status AS video_status,
+        video.id AS video_asset_id,
+        video.provider_asset_id,
+        video.hls_url,
+        video.poster_url
+      FROM lesson_nodes ln
+      LEFT JOIN LATERAL (
+        SELECT id, playback_id, status, provider_asset_id, hls_url, poster_url
+        FROM video_assets
+        WHERE lesson_node_id = ln.id
+        ORDER BY updated_at DESC, id DESC
+        LIMIT 1
+      ) video ON true
+      WHERE ln.tenant_id = ${BigInt(tenantId)} AND ln.course_id = ${BigInt(courseId)}
+      ORDER BY ln.path ASC, ln.sort_order ASC
     `);
 
     return rows.map((row) => ({
@@ -106,6 +380,12 @@ export class CoursesRepository {
       sortOrder: Number(row.sort_order),
       estimatedMinutes: Number(row.estimated_minutes),
       isPublished: row.is_published,
+      videoUrl: row.playback_id,
+      videoStatus: row.video_status,
+      videoAssetId: row.video_asset_id ? normalizeId(row.video_asset_id) : null,
+      videoMediaId: row.provider_asset_id,
+      videoHlsUrl: row.hls_url,
+      videoPosterUrl: row.poster_url,
     }));
   }
 
@@ -282,6 +562,34 @@ export class CoursesRepository {
   }
 
   async upsertLessonTranscript(lessonNodeId: string, body: UpsertLessonTranscriptDto) {
+    await this.prisma.$executeRawUnsafe(`
+      SELECT setval(
+        pg_get_serial_sequence('lesson_transcripts', 'id'),
+        COALESCE((SELECT MAX(id) FROM lesson_transcripts), 1),
+        EXISTS (SELECT 1 FROM lesson_transcripts)
+      )
+    `);
+
+    const orderedSegments = [...(Array.isArray(body.segments) ? body.segments : [])]
+      .map((segment, index) => ({
+        segment,
+        index,
+        seekSeconds: parseTranscriptSeekSeconds(segment?.seek || ''),
+      }))
+      .sort((left, right) => {
+        if (left.seekSeconds === null && right.seekSeconds === null) return left.index - right.index;
+        if (left.seekSeconds === null) return 1;
+        if (right.seekSeconds === null) return -1;
+        if (left.seekSeconds !== right.seekSeconds) return left.seekSeconds - right.seekSeconds;
+        return left.index - right.index;
+      })
+      .map(({ segment }, index) => ({
+        seek: String(segment?.seek || '00:00'),
+        progress: Number(segment?.progress || 0),
+        text: String(segment?.text || ''),
+        segmentIndex: index + 1,
+      }));
+
     const rows = await this.prisma.$queryRaw<Array<{ id: RawId }>>(Prisma.sql`
       INSERT INTO lesson_transcripts (
         lesson_node_id, language, status, full_text, segments_json, updated_at, created_at
@@ -291,7 +599,7 @@ export class CoursesRepository {
         ${body.language ?? 'th'},
         ${body.status ?? 'ready'},
         ${body.fullText ?? null},
-        CAST(${JSON.stringify(Array.isArray(body.segments) ? body.segments : [])} AS jsonb),
+        CAST(${JSON.stringify(orderedSegments)} AS jsonb),
         now(),
         now()
       )
@@ -458,6 +766,21 @@ export class CoursesRepository {
     await this.prisma.$executeRaw(Prisma.sql`
       UPDATE courses
       SET status = 'published', published_at = now(), updated_at = now()
+      WHERE tenant_id = ${BigInt(tenantId)} AND id = ${BigInt(courseId)}
+    `);
+  }
+
+  async unpublishCourse(tenantId: string, courseId: string) {
+    await this.prisma.$executeRaw(Prisma.sql`
+      UPDATE courses
+      SET status = 'draft', published_at = null, updated_at = now()
+      WHERE tenant_id = ${BigInt(tenantId)} AND id = ${BigInt(courseId)}
+    `);
+  }
+
+  async deleteCourse(tenantId: string, courseId: string) {
+    await this.prisma.$executeRaw(Prisma.sql`
+      DELETE FROM courses
       WHERE tenant_id = ${BigInt(tenantId)} AND id = ${BigInt(courseId)}
     `);
   }

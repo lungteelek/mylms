@@ -1,4 +1,5 @@
-import { PrismaClient, TenantMembership, TenantRole } from '@prisma/client';
+import { LicenseStatus, PrismaClient, TenantMembership, TenantRole } from '@prisma/client';
+import { getEffectiveTutorPricing, loadPricingConfig } from './pricing';
 
 const SELF_HOSTED_LICENSE_KEY = process.env.SELF_HOSTED_LICENSE_KEY || 'self-hosted';
 
@@ -38,27 +39,49 @@ export async function getDefaultMembership(prisma: PrismaClient, userId: number)
 }
 
 export async function ensureTenantLicense(prisma: PrismaClient, tenantId: number) {
-  const license = await prisma.license.findUnique({
+  let license = await prisma.license.findUnique({
     where: { tenantId },
   });
 
   if (!license) {
-    return {
-      status: 'ACTIVE',
-      plan: 'starter',
-      expiresAt: null,
-      issuedTo: SELF_HOSTED_LICENSE_KEY,
-    };
+    const tenant = await prisma.organization.findUnique({
+      where: { id: tenantId },
+      select: { id: true, slug: true, name: true },
+    });
+    if (!tenant) {
+      throw new Error('Tenant not found');
+    }
+
+    const pricingConfig = await loadPricingConfig();
+    const effectivePricing = getEffectiveTutorPricing(pricingConfig, tenant.slug);
+    const renewalDate = new Date();
+    renewalDate.setMonth(renewalDate.getMonth() + effectivePricing.renewalIntervalMonths);
+
+    license = await prisma.license.create({
+      data: {
+        tenantId,
+        status: LicenseStatus.TRIAL,
+        plan: effectivePricing.packageId,
+        expiresAt: renewalDate,
+        issuedTo: tenant.name || SELF_HOSTED_LICENSE_KEY,
+        metadata: {
+          pricing: {
+            packageId: effectivePricing.packageId,
+            monthlyFee: effectivePricing.package.monthlyFee,
+            revenueSharePct: effectivePricing.package.revenueSharePct,
+            videoQuotaGb: effectivePricing.package.videoQuotaGb,
+            promoFreeMonths: effectivePricing.promoFreeMonths,
+            promoEnabled: effectivePricing.promoEnabled,
+            renewalIntervalMonths: effectivePricing.renewalIntervalMonths,
+          },
+        },
+      },
+    });
   }
 
-  if (license.status === 'SUSPENDED' || license.status === 'EXPIRED') {
-    throw new Error(`License is ${license.status.toLowerCase()}`);
-  }
-
-  if (license.expiresAt && license.expiresAt.getTime() < Date.now()) {
-    throw new Error('License is expired');
-  }
-
+  // License enforcement is temporarily disabled. Keep the record available
+  // for legacy pricing/metadata compatibility, but do not block educator or
+  // student requests based on status or expiry.
   return license;
 }
 

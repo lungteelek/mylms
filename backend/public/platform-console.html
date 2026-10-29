@@ -4,10 +4,25 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>CourseChic Platform Console</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Thai:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
+    @font-face {
+      font-family: 'Sarabun';
+      src: url('/fonts/Sarabun-Light.ttf') format('truetype');
+      font-weight: 300;
+      font-style: normal;
+    }
+    @font-face {
+      font-family: 'Sarabun';
+      src: url('/fonts/Sarabun-Regular.ttf') format('truetype');
+      font-weight: 400;
+      font-style: normal;
+    }
+    @font-face {
+      font-family: 'Sarabun';
+      src: url('/fonts/Sarabun-Bold.ttf') format('truetype');
+      font-weight: 700;
+      font-style: normal;
+    }
     :root{
       --bg:#07111f;
       --bg2:#0b172b;
@@ -23,11 +38,15 @@
       --danger:#ff6b8a;
       --shadow:0 24px 70px rgba(0,0,0,.32);
       --r:20px;
+      --tab-active-bg:linear-gradient(180deg, rgba(94, 71, 148, .96), rgba(48, 37, 84, .98));
+      --tab-active-border:rgba(183,160,255,.38);
+      --tab-active-text:#efe7ff;
+      --tab-active-shadow:inset 0 1px 0 rgba(255,255,255,.08), 0 12px 24px rgba(0,0,0,.22);
     }
     *{box-sizing:border-box}
     html,body{margin:0;min-height:100%}
     body{
-      font-family:'Inter','Noto Sans Thai',sans-serif;
+      font-family:'Sarabun','Noto Sans Thai',sans-serif;
       color:var(--text);
       background:
         radial-gradient(circle at 12% 18%, rgba(90,211,255,.16), transparent 26%),
@@ -49,25 +68,28 @@
       justify-content:flex-end;
     }
     .btn{
-      min-height:36px;padding:0 11px;border-radius:10px;
+      min-height:38px;padding:0 12px;border-radius:12px;
       border:1px solid rgba(255,255,255,.08);
-      background:rgba(255,255,255,.04);
+      background:linear-gradient(180deg, rgba(16,27,48,.96), rgba(13,25,46,.92));
       color:var(--text);font:inherit;font-weight:700;
       display:inline-flex;align-items:center;justify-content:center;gap:8px;
       text-decoration:none;
-      transition:transform .18s ease, border-color .18s ease, background .18s ease;
+      transition:transform .18s ease, border-color .18s ease, background .18s ease, box-shadow .18s ease, filter .18s ease;
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.05), 0 10px 20px rgba(0,0,0,.18), 0 0 0 1px rgba(90,211,255,.04);
     }
-    .btn:hover{transform:translateY(-1px);border-color:rgba(90,211,255,.24);background:rgba(255,255,255,.06)}
+    .btn:hover{transform:translateY(-1px);border-color:rgba(90,211,255,.28);background:linear-gradient(180deg, rgba(24,41,70,.98), rgba(12,21,37,.96));box-shadow:inset 0 1px 0 rgba(255,255,255,.06), 0 12px 22px rgba(0,0,0,.22), 0 0 0 1px rgba(90,211,255,.06)}
     .btn:disabled{
       opacity:.55;
       cursor:not-allowed;
       transform:none;
       background:rgba(255,255,255,.03);
+      box-shadow:none;
     }
     .btn.primary{
-      border:0;
-      background:linear-gradient(135deg,var(--cyan),var(--violet));
+      border-color:rgba(125,211,252,.18);
+      background:linear-gradient(180deg, #7df0df 0%, var(--cyan) 100%);
       color:#07111f;
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.36), 0 10px 20px rgba(0,0,0,.22);
     }
     .btn.primary:hover{filter:saturate(1.03) brightness(1.02)}
     .floating-shadow{
@@ -146,7 +168,7 @@
       border:1px solid rgba(255,255,255,.1);
       background:rgba(255,255,255,.04);
       color:var(--text);
-      border-radius:14px;
+      border-radius:12px;
       padding:11px 13px;
       font:inherit;
       outline:none;
@@ -180,17 +202,36 @@
     }
     .inline-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
     .segmented{
-      display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;
-      padding:6px;background:rgba(255,255,255,.04);
-      border:1px solid rgba(255,255,255,.06);
-      border-radius:16px;
+      display:flex;flex-wrap:wrap;align-items:flex-end;gap:0;
+      padding:0 0 1px;background:transparent;
+      border:0;
     }
     .segment{
-      border:0;background:transparent;color:var(--muted);
-      border-radius:12px;padding:11px 10px;font:inherit;font-weight:700;
+      position:relative;
+      margin-right:-12px;
+      min-height:42px;
+      padding:0 18px 0 22px;
+      border:1px solid rgba(255,255,255,.08);
+      border-bottom:0;
+      border-radius:16px 16px 0 0;
+      clip-path:polygon(12px 0, calc(100% - 16px) 0, 100% 100%, 0 100%, 0 12px);
+      background:linear-gradient(180deg, rgba(27, 48, 74, .94), rgba(13, 24, 42, .96));
+      color:var(--muted);
+      font:inherit;
+      font-weight:700;
       cursor:pointer;
+      transition:transform .18s ease, background .18s ease, color .18s ease, border-color .18s ease, box-shadow .18s ease;
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.06);
     }
-    .segment.active{background:rgba(90,211,255,.12);color:var(--text)}
+    .segment:hover{transform:translateY(-2px);border-color:rgba(90,211,255,.28);color:var(--text)}
+    .segment.active{
+      z-index:2;
+      border-color:var(--tab-active-border);
+      background:var(--tab-active-bg);
+      color:var(--tab-active-text);
+      box-shadow:var(--tab-active-shadow);
+    }
+    .segment:focus-visible{outline:none;z-index:3;box-shadow:0 0 0 2px rgba(183,160,255,.42), var(--tab-active-shadow)}
     .context-list{display:grid;gap:10px}
     .row{
       padding:14px;border-radius:16px;background:rgba(255,255,255,.04);
@@ -247,7 +288,7 @@
       .result{margin-top:10px}
       .wrap{padding-bottom:48px}
       form#createTutorForm{margin-top:12px !important}
-      .summary-grid,.form-grid,.segmented{grid-template-columns:1fr}
+      .summary-grid,.form-grid{grid-template-columns:1fr}
       h1{font-size:1.85rem;line-height:.98}
     }
     @media (prefers-reduced-motion: reduce){

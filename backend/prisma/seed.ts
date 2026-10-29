@@ -46,6 +46,20 @@ async function main() {
     },
   });
 
+  const platformOwner = await prisma.user.upsert({
+    where: { email: 'coursechic@gmail.com' },
+    update: {
+      platformRole: PlatformRole.ADMIN,
+      name: 'CourseChic Owner',
+    },
+    create: {
+      email: 'coursechic@gmail.com',
+      name: 'CourseChic Owner',
+      password: hashedPassword,
+      platformRole: PlatformRole.ADMIN,
+    },
+  });
+
   await prisma.tenantMembership.upsert({
     where: {
       userId_tenantId: {
@@ -81,6 +95,25 @@ async function main() {
       tenantId: tenant.id,
       role: TenantRole.OWNER,
       isDefault: false,
+    },
+  });
+
+  await prisma.tenantMembership.upsert({
+    where: {
+      userId_tenantId: {
+        userId: platformOwner.id,
+        tenantId: tenant.id,
+      },
+    },
+    update: {
+      role: TenantRole.OWNER,
+      isDefault: true,
+    },
+    create: {
+      userId: platformOwner.id,
+      tenantId: tenant.id,
+      role: TenantRole.OWNER,
+      isDefault: true,
     },
   });
 
@@ -148,7 +181,7 @@ async function main() {
     data: {
       tenantId: tenant.id,
       title: 'Advanced Backend with Node.js',
-      description: 'Master Express, Prisma, and PostgreSQL.',
+      description: 'Master Express, Prisma, and SQLite.',
       instructorId: instructor.id,
     }
   });

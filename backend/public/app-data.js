@@ -1,8 +1,17 @@
 (function () {
   const STORAGE_KEY = 'coursechic.auth.session';
-  const LESSON_PREVIEW_KEY = 'coursechic.courseBuilder.lessonPreview';
   const UI_VIEW_KEY = 'coursechic.ui.view';
   const DEFAULT_TENANT_SLUG = 'coursechic';
+  const PAGE_DEFAULT_TENANT_SLUG = (document.body?.dataset?.tenantSlug || window.COURSECHIC_DEFAULT_TENANT_SLUG || '').trim() || null;
+  const SAFE_PAGE_ORIGIN = (() => {
+    try {
+      return window.location.origin && window.location.origin !== 'null'
+        ? window.location.origin
+        : 'http://localhost:3000';
+    } catch {
+      return 'http://localhost:3000';
+    }
+  })();
 
   function getHostTenantSlug() {
     try {
@@ -16,7 +25,49 @@
       return null;
     }
   }
+
+  function getTenantStorageScope(tenantSlug = null) {
+    return String(
+      tenantSlug
+      || readSession()?.tenantSlug
+      || PAGE_DEFAULT_TENANT_SLUG
+      || getHostTenantSlug()
+      || 'global',
+    ).trim().toLowerCase() || 'global';
+  }
+
+  function getTenantScopedKey(baseKey, tenantSlug = null) {
+    return `${baseKey}:${getTenantStorageScope(tenantSlug)}`;
+  }
+
+  function resolveTenantSlug(preferredTenantSlug = null) {
+    return (
+      preferredTenantSlug
+      || readSession()?.tenantSlug
+      || PAGE_DEFAULT_TENANT_SLUG
+      || getHostTenantSlug()
+      || DEFAULT_TENANT_SLUG
+      || null
+    );
+  }
+
+  window.COURSECHIC_NEST_API_BASE = window.COURSECHIC_NEST_API_BASE || new URL('/api/nest', SAFE_PAGE_ORIGIN).toString();
   window.ASTRA_NEST_API_BASE = window.ASTRA_NEST_API_BASE || 'http://localhost:3001/api';
+
+  function getNestApiBaseCandidates() {
+    const session = readSession();
+    const host = window.location.hostname.toLowerCase();
+    const candidates = [
+      window.COURSECHIC_NEST_API_BASE,
+      '/api/nest',
+      window.COURSECHIC_NEST_API_BASE,
+      session?.nestApiBase,
+      window.ASTRA_NEST_API_BASE,
+      host === 'localhost' || host === '127.0.0.1' ? 'http://localhost:3001/api' : '/api',
+    ];
+
+    return [...new Set(candidates.filter((value) => typeof value === 'string' && value.trim()).map((value) => value.trim()))];
+  }
 
   function readSession() {
     try {
@@ -43,8 +94,33 @@
     localStorage.removeItem(STORAGE_KEY);
   }
 
+  function clearBuilderDrafts() {
+    try {
+      const scope = getTenantStorageScope();
+      const keys = [];
+      for (let index = 0; index < localStorage.length; index += 1) {
+        const key = localStorage.key(index);
+        if (!key) continue;
+        if (key.startsWith(`coursechic.courseBuilder:${scope}`) || key.startsWith(`coursechic.courseBuilder.lessonPreview:${scope}`)) {
+          keys.push(key);
+        }
+      }
+      keys.forEach((key) => localStorage.removeItem(key));
+    } catch {
+      // ignore storage access errors
+    }
+  }
+
   function hasSession() {
     return Boolean(readSession()?.token);
+  }
+
+  function describeSession(session = readSession()) {
+    if (!session) {
+      return 'no-session';
+    }
+    const tokenSource = session.nestToken ? 'nest+express' : (session.token ? 'express-only' : 'no-token');
+    return `${tokenSource} tenant=${session.tenantSlug || 'n/a'}`;
   }
 
   async function request(path, options = {}) {
@@ -84,29 +160,55 @@
       headers.set('Content-Type', 'application/json');
     }
 
-    if (session?.nestToken) {
-      headers.set('Authorization', `Bearer ${session.nestToken}`);
+    if (session?.token || session?.nestToken) {
+      headers.set('Authorization', `Bearer ${session.token || session.nestToken}`);
     }
 
     if (session?.tenantSlug) {
       headers.set('x-tenant-slug', session.tenantSlug);
     }
 
-    const response = await fetch(`${window.ASTRA_NEST_API_BASE}${path}`, {
-      ...options,
-      headers,
-    });
+    let lastNetworkError = null;
+    for (const base of getNestApiBaseCandidates()) {
+      try {
+        const response = await fetch(`${base}${path}`, {
+          ...options,
+          headers,
+        });
 
-    const data = await response.json().catch(() => null);
-    if (!response.ok) {
-      throw new Error(formatRequestError(data?.error || `Nest request failed (${response.status})`, 'nest'));
+        const data = await response.json().catch(() => null);
+        if (!response.ok) {
+          const errorText = formatRequestError(data?.error || `Nest request failed (${response.status})`, 'nest');
+          const authFailed = response.status === 401 || response.status === 403 || /invalid token|unauthorized/i.test(errorText);
+          if (authFailed && !options.__retried && typeof window.CourseChic?.ensureNestSession === 'function') {
+            try {
+              await window.CourseChic.ensureNestSession();
+              return await requestNest(path, {
+                ...options,
+                __retried: true,
+              });
+            } catch {
+              // fall through to original error
+            }
+          }
+          throw new Error(errorText);
+        }
+
+        return data;
+      } catch (error) {
+        if (error instanceof Error && error.message.includes('Nest request failed')) {
+          throw error;
+        }
+        lastNetworkError = error;
+      }
     }
 
-    return data;
+    const tried = getNestApiBaseCandidates().join(', ');
+    throw new Error(formatRequestError(`${lastNetworkError?.message || 'เชื่อมต่อกับ backend คอร์สไม่สำเร็จ'} | session=${describeSession()} | tried=${tried}`, 'nest'));
   }
 
   async function login({ email, password, tenantSlug = null }) {
-    const effectiveTenantSlug = tenantSlug || readSession()?.tenantSlug || getHostTenantSlug() || null;
+    const effectiveTenantSlug = resolveTenantSlug(tenantSlug);
     const loginPayload = {
       email,
       password,
@@ -148,7 +250,7 @@
   }
 
   async function loginWithGoogle({ idToken, tenantSlug = null }) {
-    const effectiveTenantSlug = tenantSlug || readSession()?.tenantSlug || getHostTenantSlug() || null;
+    const effectiveTenantSlug = resolveTenantSlug(tenantSlug);
     const expressData = await request('/api/auth/google', {
       method: 'POST',
       body: JSON.stringify({
@@ -199,20 +301,49 @@
   }
 
   function setLessonPreview(preview) {
-    localStorage.setItem(LESSON_PREVIEW_KEY, JSON.stringify(preview));
+    localStorage.setItem(getTenantScopedKey('coursechic.courseBuilder.lessonPreview'), JSON.stringify(preview));
   }
 
   function getLessonPreview() {
     try {
-      const raw = localStorage.getItem(LESSON_PREVIEW_KEY);
+      const scopedKey = getTenantScopedKey('coursechic.courseBuilder.lessonPreview');
+      const raw = localStorage.getItem(scopedKey) || localStorage.getItem('coursechic.courseBuilder.lessonPreview');
       return raw ? JSON.parse(raw) : null;
     } catch {
       return null;
     }
   }
 
+  function cloneTree(nodes) {
+    return (Array.isArray(nodes) ? nodes : []).map((node) => ({
+      ...node,
+      asset: node.asset ? { ...node.asset } : { type: 'none', fileName: '', url: '' },
+      transcriptSegments: Array.isArray(node.transcriptSegments) ? node.transcriptSegments.map((segment) => ({ ...segment })) : [],
+      children: cloneTree(node.children || []),
+    }));
+  }
+
+  function buildCourseFromLessonPreview(preview) {
+    const lesson = preview?.lesson || {};
+    const course = preview?.course || {};
+    const nodes = Array.isArray(course?.nodes) ? course.nodes : (lesson?.id ? [lesson] : []);
+
+    if (!nodes.length) {
+      return null;
+    }
+
+    const title = course?.title || lesson?.title || 'ยังไม่มีคอร์สที่เลือก';
+    return {
+      title,
+      description: course?.description || '',
+      slug: slugifyCourseTitle(title) || 'course-preview',
+      modules: nodes.map((node) => nodeToModule(node)),
+      tree: cloneTree(nodes),
+    };
+  }
+
   function clearLessonPreview() {
-    localStorage.removeItem(LESSON_PREVIEW_KEY);
+    localStorage.removeItem(getTenantScopedKey('coursechic.courseBuilder.lessonPreview'));
   }
 
   function setUiView(viewKey, viewValue) {
@@ -336,6 +467,8 @@
       seek: segment.seek || '00:00',
       progress: segment.progress || Math.max(1, Math.round(((index + 1) / total) * 100)),
       text: segment.text || '',
+      startMs: Number(segment.startMs ?? segment.start ?? 0),
+      endMs: Number(segment.endMs ?? segment.end ?? segment.startMs ?? segment.start ?? 0),
     }));
   }
 
@@ -379,7 +512,9 @@
       id: node?.id,
       title: node?.title || 'Untitled lesson',
       content: node?.plainText || node?.description || node?.htmlContent || '',
-      videoUrl: asset.type === 'url' ? asset.url || asset.externalUrl || '' : '',
+      videoUrl: node?.videoUrl || (asset.type === 'url' ? asset.url || asset.externalUrl || '' : ''),
+      videoStatus: node?.videoStatus || null,
+      videoMediaId: node?.videoMediaId || null,
       asset,
       transcriptSegments: Array.isArray(node?.transcriptSegments) ? node.transcriptSegments : [],
       path: node?.path || '',
@@ -400,7 +535,7 @@
 
   function buildStudentPreview(lesson, course) {
     const selectedLesson = lesson || {};
-    const parentTitle = course?.title || 'Course preview';
+    const parentTitle = course?.title || 'พรีวิวคอร์ส';
     const nodes = Array.isArray(course?.nodes) ? course.nodes : [];
     const path = selectedLesson.path || selectedLesson.trail?.join('.') || '1';
     const title = selectedLesson.title || 'Preview lesson';
@@ -456,6 +591,7 @@
       files,
       planner: buildPlannerFromCourse({ title: parentTitle, modules: nodes }),
       courseMap: [parentTitle, ...nodes.map((node) => node.title)],
+      selectedCourseTree: cloneTree(nodes),
       aiSummary: content ? `Preview summary: ${content}` : 'Preview lesson has no content yet.',
       aiExercise: asset.type !== 'none'
         ? 'This preview lesson already has a resource attached.'
@@ -476,11 +612,23 @@
     }
 
     const [tenantContext, instructorCourses, students, knowledgeBases, remoteCoursesResponse] = await Promise.all([
-      request('/api/tenant/context'),
-      request('/api/courses/instructor'),
-      request('/api/admin/students'),
-      session?.nestToken ? requestNest('/knowledge-bases').catch(() => ({ data: { items: [] } })) : Promise.resolve({ data: { items: [] } }),
-      session?.nestToken ? requestNest('/courses').catch(() => ({ data: { items: [] } })) : Promise.resolve({ data: { items: [] } }),
+      request('/api/tenant/context').catch(() => ({
+        tenant: {
+          id: session.user?.tenant?.id || session.tenantId || 0,
+          name: session.user?.tenant?.name || 'Tutor Tan',
+          slug: session.tenantSlug || 'tutortan',
+        },
+        license: session.license || { status: 'ACTIVE', plan: 'starter', expiresAt: null },
+        features: session.features || {},
+      })),
+      request('/api/courses/instructor').catch(() => []),
+      request('/api/admin/students').catch(() => ({ total: 0, active: 0, expiring: 0, expired: 0, students: [] })),
+      (session?.nestToken || session?.token)
+        ? requestNest('/knowledge-bases').catch(() => ({ data: { items: [] } }))
+        : Promise.resolve({ data: { items: [] } }),
+      (session?.nestToken || session?.token)
+        ? requestNest('/courses').catch(() => ({ data: { items: [] } }))
+        : Promise.resolve({ data: { items: [] } }),
     ]);
 
     const courses = Array.isArray(instructorCourses) ? instructorCourses : [];
@@ -490,14 +638,25 @@
       ? {
           ...(await request(`/api/courses/${courseId}?tenantSlug=${encodeURIComponent(session.tenantSlug || DEFAULT_TENANT_SLUG)}`)),
         }
-      : { title: 'ยังไม่มีคอร์ส', modules: [] };
+      : { title: 'ยังไม่มีคอร์สที่เลือก', modules: [] };
     const remoteCourses = remoteCoursesResponse?.data?.items || [];
     const resolvedRemoteCourseId = resolveRemoteCourseId(baseSelectedCourse, remoteCourses, session?.lastSelectedRemoteCourseId);
-    const selectedCourse = await attachRemoteCourseTree(baseSelectedCourse, resolvedRemoteCourseId, session?.nestToken ? requestNest : null);
+    const previewFallbackCourse = buildCourseFromLessonPreview(getLessonPreview());
+    const selectedCourseSource = (Array.isArray(baseSelectedCourse.modules) && baseSelectedCourse.modules.length)
+      ? baseSelectedCourse
+      : (previewFallbackCourse || baseSelectedCourse);
+    const selectedCourse = await attachRemoteCourseTree(
+      selectedCourseSource,
+      resolvedRemoteCourseId,
+      (session?.nestToken || session?.token) ? requestNest : null,
+    );
+    if (selectedCourse?.remoteCourseId && String(session?.lastSelectedRemoteCourseId || '') !== String(selectedCourse.remoteCourseId)) {
+      updateSessionSelection({ lastSelectedRemoteCourseId: String(selectedCourse.remoteCourseId) });
+    }
     const selectedKnowledgeBase = Array.isArray(knowledgeBases?.data?.items)
       ? knowledgeBases.data.items.find((item) => String(item.id) === String(selectedKnowledgeBaseId)) || knowledgeBases.data.items[0] || null
       : null;
-    const knowledgeBaseDocuments = selectedKnowledgeBase?.id && session?.nestToken
+    const knowledgeBaseDocuments = selectedKnowledgeBase?.id && (session?.nestToken || session?.token)
       ? await requestNest(`/knowledge-bases/${selectedKnowledgeBase.id}/documents`).catch(() => ({ data: { items: [] } }))
       : { data: { items: [] } };
 
@@ -508,6 +667,7 @@
       features: tenantContext.features || {},
       courses,
       selectedCourse,
+      selectedCourseTree: selectedCourse.tree || [],
       selectedCourseId: courseId,
       selectedKnowledgeBase,
       selectedKnowledgeBaseId,
@@ -533,9 +693,19 @@
     }
 
     const [tenantContext, enrollments, remoteCoursesResponse] = await Promise.all([
-      request('/api/tenant/context'),
-      request('/api/enrollments/my'),
-      session?.nestToken ? requestNest('/courses').catch(() => ({ data: { items: [] } })) : Promise.resolve({ data: { items: [] } }),
+      request('/api/tenant/context').catch(() => ({
+        tenant: {
+          id: session.user?.tenant?.id || session.tenantId || 0,
+          name: session.user?.tenant?.name || 'Tutor Tan',
+          slug: session.tenantSlug || 'tutortan',
+        },
+        license: session.license || { status: 'ACTIVE', plan: 'starter', expiresAt: null },
+        features: session.features || {},
+      })),
+      request('/api/enrollments/my').catch(() => ([])),
+      (session?.nestToken || session?.token)
+        ? requestNest('/courses').catch(() => ({ data: { items: [] } }))
+        : Promise.resolve({ data: { items: [] } }),
     ]);
 
     const enrollmentList = Array.isArray(enrollments) ? enrollments : [];
@@ -543,10 +713,21 @@
     const selectedCourseId = firstEnrollment?.course?.id;
     const baseCourse = selectedCourseId
       ? await request(`/api/courses/${selectedCourseId}?tenantSlug=${encodeURIComponent(session.tenantSlug || DEFAULT_TENANT_SLUG)}`)
-      : { title: 'ยังไม่มีคอร์ส', modules: [] };
+      : { title: 'ยังไม่มีคอร์สที่เลือก', modules: [] };
+    const previewFallbackCourse = buildCourseFromLessonPreview(getLessonPreview());
+    const selectedCourseSource = (Array.isArray(baseCourse.modules) && baseCourse.modules.length)
+      ? baseCourse
+      : (previewFallbackCourse || baseCourse);
 
-    const remoteCourseId = resolveRemoteCourseId(baseCourse, remoteCoursesResponse?.data?.items || [], session?.lastSelectedRemoteCourseId);
-    const selectedCourse = await attachRemoteCourseTree(baseCourse, remoteCourseId, session?.nestToken ? requestNest : null);
+    const remoteCourseId = resolveRemoteCourseId(selectedCourseSource, remoteCoursesResponse?.data?.items || [], session?.lastSelectedRemoteCourseId);
+    const selectedCourse = await attachRemoteCourseTree(
+      selectedCourseSource,
+      remoteCourseId,
+      (session?.nestToken || session?.token) ? requestNest : null,
+    );
+    if (selectedCourse?.remoteCourseId && String(session?.lastSelectedRemoteCourseId || '') !== String(selectedCourse.remoteCourseId)) {
+      updateSessionSelection({ lastSelectedRemoteCourseId: String(selectedCourse.remoteCourseId) });
+    }
     const treeNodes = Array.isArray(selectedCourse?.tree) ? selectedCourse.tree : [];
     const flattenedTree = flattenLessonTree(treeNodes);
     const selectedModuleNode = pickPrimaryLesson(treeNodes);
@@ -555,6 +736,29 @@
     const transcript = selectedModule?.transcriptSegments?.length
       ? buildTranscriptFromSegments(selectedModule.transcriptSegments)
       : buildTranscriptFromModule(selectedModule);
+    let video = null;
+    const moduleVideoUrl = String(selectedModule?.videoUrl || '').trim();
+    const videoMatch = moduleVideoUrl.match(/\/api\/(?:modules|lesson-nodes)\/(\d+)\/videos\/play\?mediaId=([^&]+)/);
+    if (videoMatch) {
+      try {
+        const playToken = await request(`/api/lesson-nodes/${videoMatch[1]}/videos/play-token?mediaId=${encodeURIComponent(decodeURIComponent(videoMatch[2]))}`, {
+          method: 'POST',
+        });
+        const playback = playToken?.data?.playbackUrl
+          ? await request(playToken.data.playbackUrl, { method: 'GET' })
+          : null;
+        video = {
+          moduleId: Number(videoMatch[1]),
+          mediaId: decodeURIComponent(videoMatch[2]),
+          playbackUrl: playToken?.data?.playbackUrl || '',
+          posterUrl: playback?.data?.posterUrl || '',
+          hlsUrl: playback?.data?.source?.hls || '',
+          mp4Url: playback?.data?.source?.r2Mp4 || playback?.data?.source?.mp4 || '',
+        };
+      } catch {
+        video = null;
+      }
+    }
     const planner = buildPlannerFromCourse(selectedCourse);
     const files = (selectedModuleNode?.asset && selectedModuleNode.asset.type && selectedModuleNode.asset.type !== 'none'
       ? [selectedModuleNode.asset]
@@ -580,8 +784,10 @@
       daysLeft: Math.max(7, 30 - Math.round((firstEnrollment?.progress || 0) / 4)),
       resumeAt: firstEnrollment?.progress ? `${String(12 + Math.floor(firstEnrollment.progress / 20)).padStart(2, '0')}:40` : (selectedModuleNode?.transcriptSegments?.[0]?.seek || '--:--'),
       selectedCourse,
+      selectedCourseTree: selectedCourse.tree || [],
       selectedModuleTitle: selectedModule?.title || selectedCourse.title,
       transcript,
+      video,
       files,
       planner,
       courseMap: [
@@ -611,7 +817,9 @@
     loginWithGoogle,
     logout,
     hasSession,
+    describeSession,
     getSession,
+    resolveTenantSlug,
     updateSessionSelection,
     request,
     requestNest,

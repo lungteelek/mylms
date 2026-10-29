@@ -1,10 +1,22 @@
 {
   "name": "mylms-workspace",
   "private": true,
+  "engines": {
+    "node": ">=24 <25"
+  },
   "scripts": {
     "demo:start": "bash ./scripts/demo-start.sh",
     "demo:stop": "bash ./scripts/demo-stop.sh",
+    "services:install": "sudo bash ./scripts/manage-services.sh install",
+    "services:restart": "sudo bash ./scripts/manage-services.sh restart",
+    "services:status": "sudo bash ./scripts/manage-services.sh status",
     "handoff:update": "bash ./scripts/handoff-update.sh",
-    "handoff:resume": "bash ./scripts/handoff-resume.sh"
+    "handoff:resume": "bash ./scripts/handoff-resume.sh",
+    "educator:dev": "npm run dev --prefix educator-web",
+    "educator:build": "npm run build --prefix educator-web",
+    "educator:start": "npm run start --prefix educator-web",
+    "student:dev": "npm run dev --prefix student-web",
+    "student:build": "npm run build --prefix student-web",
+    "student:start": "npm run start --prefix student-web"
   }
 }

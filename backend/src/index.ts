@@ -6,12 +6,17 @@ import multer from 'multer';
 import path from 'path';
 import type { Router } from 'express';
 import { authenticate, AuthRequest } from './middleware/auth';
+import { buildCompactUploadFileName, decodeMultipartFilename } from './lib/multipart';
+import { normalizeCommercePayload } from './lib/pricing';
 import prisma from './lib/prisma';
+import { ensureTenantLicense } from './lib/tenant';
+import { getPublicPackageOptionsFromPricing } from './lib/course-access';
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const NEST_API_BASE = (process.env.COURSECHIC_NEST_API_BASE || 'http://127.0.0.1:3001/api').replace(/\/$/, '');
 const publicDir = path.join(__dirname, '../public');
 const uploadsDir = path.join(__dirname, '../uploads');
 const landingPagesDir = path.join(uploadsDir, 'landing-pages');
@@ -45,6 +50,8 @@ function shouldTryTenantLandingPage(req: Request) {
     '/admin-app',
     '/student-app.html',
     '/student-app',
+    '/video-player.html',
+    '/video-player',
     '/platform-console.html',
     '/platform-console',
     '/index.html',
@@ -82,10 +89,28 @@ function buildDefaultLandingPage(tenantName: string) {
       --accent: #7dd3fc;
       --accent-2: #34d399;
     }
+    @font-face {
+      font-family: 'Sarabun';
+      src: url('/fonts/Sarabun-Light.ttf') format('truetype');
+      font-weight: 300;
+      font-style: normal;
+    }
+    @font-face {
+      font-family: 'Sarabun';
+      src: url('/fonts/Sarabun-Regular.ttf') format('truetype');
+      font-weight: 400;
+      font-style: normal;
+    }
+    @font-face {
+      font-family: 'Sarabun';
+      src: url('/fonts/Sarabun-Bold.ttf') format('truetype');
+      font-weight: 700;
+      font-style: normal;
+    }
     * { box-sizing: border-box; }
     html, body { margin: 0; min-height: 100%; }
     body {
-      font-family: Inter, "Noto Sans Thai", system-ui, sans-serif;
+      font-family: Sarabun, "Noto Sans Thai", system-ui, sans-serif;
       background:
         radial-gradient(circle at top, rgba(56, 189, 248, 0.22), transparent 32%),
         radial-gradient(circle at 20% 20%, rgba(52, 211, 153, 0.16), transparent 28%),
@@ -292,7 +317,7 @@ function buildDefaultLandingPage(tenantName: string) {
         <ul>
           <li>จันทร์ - ศุกร์ 19:00 - 21:00</li>
           <li>เสาร์ 10:00 - 12:00</li>
-          <li>เรียนย้อนหลังได้จาก student-app</li>
+          <li>เรียนย้อนหลังได้จาก student workspace</li>
         </ul>
       </article>
       <article class="info-card">
@@ -329,10 +354,28 @@ function buildEnrollPage(tenantSlug: string, courseSlug: string, courseTitle: st
       --primary-2: #4f8cf7;
       --ok: #0f8d63;
     }
+    @font-face {
+      font-family: 'Sarabun';
+      src: url('/fonts/Sarabun-Light.ttf') format('truetype');
+      font-weight: 300;
+      font-style: normal;
+    }
+    @font-face {
+      font-family: 'Sarabun';
+      src: url('/fonts/Sarabun-Regular.ttf') format('truetype');
+      font-weight: 400;
+      font-style: normal;
+    }
+    @font-face {
+      font-family: 'Sarabun';
+      src: url('/fonts/Sarabun-Bold.ttf') format('truetype');
+      font-weight: 700;
+      font-style: normal;
+    }
     * { box-sizing: border-box; }
     html, body { margin: 0; min-height: 100%; }
     body {
-      font-family: Inter, "Noto Sans Thai", system-ui, sans-serif;
+      font-family: Sarabun, "Noto Sans Thai", system-ui, sans-serif;
       background: linear-gradient(180deg, #f7fbff, #edf4fb);
       color: var(--text);
       padding: 32px;
@@ -411,7 +454,7 @@ function buildEnrollPage(tenantSlug: string, courseSlug: string, courseTitle: st
         <span class="pill">${safeCourseSlug || 'course'}</span>
       </div>
       <h1>สมัครเรียน ${safeCourseTitle}</h1>
-      <p>กรอกข้อมูลเบื้องต้นเพื่อบันทึกการสมัครเรียนของบัญชีองค์กรนี้ แล้วเราจะผูกผู้เรียนกับคอร์สและส่งต่อเข้า student-app ให้ทันที.</p>
+      <p>กรอกข้อมูลเบื้องต้นเพื่อบันทึกการสมัครเรียนของบัญชีองค์กรนี้ แล้วเราจะผูกผู้เรียนกับคอร์สและส่งต่อเข้า student workspace ให้ทันที.</p>
     </section>
     <section class="grid">
       <article class="card">
@@ -433,9 +476,16 @@ function buildEnrollPage(tenantSlug: string, courseSlug: string, courseTitle: st
             <input id="tenantSlug" type="text" value="${safeTenant}" required />
           </div>
           <div class="field">
+            <span>แพ็กเรียน</span>
+            <select id="packageId">
+              <option value="">กำลังโหลดแพ็ก...</option>
+            </select>
+            <small id="packageNote">เลือกแพ็กที่ต้องการสมัคร แล้วระบบจะเปิดสิทธิ์ตามคอร์สในแพ็กนั้น</small>
+          </div>
+          <div class="field">
             <span>คอร์ส</span>
-            <input id="courseSlug" type="text" value="${safeCourseSlug}" placeholder="course slug หรือ course id" required />
-            <small>ใช้ slug, ชื่อคอร์ส, หรือรหัสคอร์สก็ได้</small>
+            <input id="courseSlug" type="text" value="${safeCourseSlug}" placeholder="course slug หรือ course id" />
+            <small>ถ้าไม่เลือกแพ็ก ระบบจะใช้คอร์สนี้แบบเดี่ยว</small>
           </div>
           <button class="btn" type="submit">สมัครเรียน</button>
           <div class="status" id="status">ยังไม่ได้ส่งข้อมูล</div>
@@ -446,7 +496,7 @@ function buildEnrollPage(tenantSlug: string, courseSlug: string, courseTitle: st
         <ul class="meta-list">
           <li>Tenant: ${safeTenant}</li>
           <li>Course: ${safeCourseTitle}</li>
-          <li>ต่อจากหน้านี้ผู้เรียนจะเข้า student-app ของบัญชีองค์กรนี้ได้</li>
+          <li>ต่อจากหน้านี้ผู้เรียนจะเข้า student workspace ของบัญชีองค์กรนี้ได้</li>
         </ul>
       </aside>
     </section>
@@ -454,6 +504,44 @@ function buildEnrollPage(tenantSlug: string, courseSlug: string, courseTitle: st
   <script>
     const form = document.getElementById('enrollForm');
     const status = document.getElementById('status');
+    const packageSelect = document.getElementById('packageId');
+    const packageNote = document.getElementById('packageNote');
+    let packageOptions = [];
+
+    async function loadPackages() {
+      try {
+        const response = await fetch('/api/public/pricing-packages', { headers: { Accept: 'application/json' } });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data?.error || 'โหลดแพ็กไม่สำเร็จ');
+        packageOptions = Array.isArray(data?.packages) ? data.packages : [];
+        if (!packageOptions.length) {
+          packageSelect.innerHTML = '<option value="">ยังไม่มีแพ็กสาธารณะ</option>';
+          return;
+        }
+        packageSelect.innerHTML = '<option value="">ไม่ใช้แพ็ก / สมัครเป็นคอร์สเดี่ยว</option>' + packageOptions.map((pkg) => {
+          const price = pkg.salePrice != null ? Number(pkg.salePrice).toLocaleString('th-TH') + ' บาท' : 'ติดต่อสอบถาม';
+          return '<option value="' + pkg.id + '">' + pkg.name + ' • ' + pkg.durationMonths + ' เดือน • ' + price + '</option>';
+        }).join('');
+        const preselected = packageOptions[0];
+        if (preselected) {
+          packageSelect.value = preselected.id;
+          packageNote.textContent = 'แพ็กนี้เรียนได้: ' + preselected.courseTitles.join(', ');
+        }
+      } catch (error) {
+        packageSelect.innerHTML = '<option value="">โหลดแพ็กไม่สำเร็จ</option>';
+        packageNote.textContent = error.message || 'โหลดแพ็กไม่สำเร็จ';
+      }
+    }
+
+    packageSelect.addEventListener('change', () => {
+      const selected = packageOptions.find((pkg) => pkg.id === packageSelect.value);
+      packageNote.textContent = selected
+        ? ('แพ็กนี้เรียนได้: ' + selected.courseTitles.join(', '))
+        : 'ถ้าไม่เลือกแพ็ก ระบบจะใช้คอร์สที่กรอกไว้ด้านล่างแบบเดี่ยว';
+    });
+
+    loadPackages();
+
     form.addEventListener('submit', async (event) => {
       event.preventDefault();
       status.textContent = 'กำลังสมัครเรียน...';
@@ -463,6 +551,7 @@ function buildEnrollPage(tenantSlug: string, courseSlug: string, courseTitle: st
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             tenantSlug: document.getElementById('tenantSlug').value.trim(),
+            packageId: packageSelect.value || null,
             courseSlug: document.getElementById('courseSlug').value.trim(),
             email: document.getElementById('email').value.trim(),
             password: document.getElementById('password').value,
@@ -481,6 +570,18 @@ function buildEnrollPage(tenantSlug: string, courseSlug: string, courseTitle: st
 </html>`;
 }
 
+async function resolveTenantFromHost(req: Request) {
+  const tenantSlug = getTenantSlugFromHost(req);
+  if (!tenantSlug) {
+    return null;
+  }
+
+  return prisma.organization.findUnique({
+    where: { slug: tenantSlug },
+    select: { id: true, slug: true, name: true },
+  });
+}
+
 async function trySendTenantLandingPage(req: Request, res: Response) {
   const tenantSlug = getTenantSlugFromHost(req);
   if (!tenantSlug) {
@@ -488,10 +589,7 @@ async function trySendTenantLandingPage(req: Request, res: Response) {
   }
 
   try {
-    const tenant = await prisma.organization.findUnique({
-      where: { slug: tenantSlug },
-      select: { id: true, slug: true, name: true },
-    });
+    const tenant = await resolveTenantFromHost(req);
     if (!tenant) {
       console.warn(`[landing] tenant not found for host=${req.headers.host} slug=${tenantSlug}, serving default template`);
       res.type('html').send(buildDefaultLandingPage(tenantSlug));
@@ -642,6 +740,55 @@ app.get('/api/debug/landing-page/:slug', async (req: Request, res: Response) => 
   });
 });
 
+app.get('/api/public/commerce', async (req: Request, res: Response) => {
+  try {
+    const tenant = await resolveTenantFromHost(req);
+    if (!tenant) {
+      return res.status(404).json({ error: 'Tenant not found for this host' });
+    }
+
+    const license = await ensureTenantLicense(prisma, tenant.id);
+    const metadata = license.metadata && typeof license.metadata === 'object' ? license.metadata as Record<string, unknown> : {};
+    const commerce = normalizeCommercePayload(metadata.workspaceCommerce);
+
+    return res.json({
+      tenant,
+      commerce,
+    });
+  } catch (error: any) {
+    return res.status(500).json({ error: error?.message || 'Failed to load public commerce config' });
+  }
+});
+
+app.get('/api/public/pricing-packages', async (req: Request, res: Response) => {
+  try {
+    const tenant = await resolveTenantFromHost(req);
+    if (!tenant) {
+      return res.status(404).json({ error: 'Tenant not found for this host' });
+    }
+
+    const license = await ensureTenantLicense(prisma, tenant.id);
+    const metadata = license.metadata && typeof license.metadata === 'object' ? license.metadata as Record<string, unknown> : {};
+    const pricing = metadata.pricing;
+    const packages = getPublicPackageOptionsFromPricing(pricing);
+    const courses = await prisma.course.findMany({
+      where: { tenantId: tenant.id },
+      select: { id: true, title: true },
+    });
+    const courseTitleMap = new Map(courses.map((course) => [String(course.id), course.title]));
+
+    return res.json({
+      tenant,
+      packages: packages.map((pkg) => ({
+        ...pkg,
+        courseTitles: pkg.includedCourseIds.map((courseId) => courseTitleMap.get(String(courseId))).filter(Boolean),
+      })),
+    });
+  } catch (error: any) {
+    return res.status(500).json({ error: error?.message || 'Failed to load public pricing packages' });
+  }
+});
+
 app.use(async (req: Request, res: Response, next) => {
   if (!shouldTryTenantLandingPage(req)) {
     return next();
@@ -652,6 +799,66 @@ app.use(async (req: Request, res: Response, next) => {
   }
 
   return next();
+});
+
+app.use('/api/nest', async (req: Request, res: Response) => {
+  const upstreamPath = req.originalUrl.replace(/^\/api\/nest/, '');
+  const upstreamUrl = `${NEST_API_BASE}${upstreamPath}`;
+
+  try {
+    const headers = new Headers();
+    for (const [name, value] of Object.entries(req.headers)) {
+      if (value === undefined) continue;
+      const lowerName = name.toLowerCase();
+      if (['host', 'content-length', 'connection'].includes(lowerName)) continue;
+      headers.set(lowerName, Array.isArray(value) ? value.join(', ') : String(value));
+    }
+
+    let body: string | Buffer | undefined;
+    if (!['GET', 'HEAD'].includes(req.method.toUpperCase())) {
+      if (Buffer.isBuffer(req.body)) {
+        body = req.body;
+      } else if (typeof req.body === 'string') {
+        body = req.body;
+      } else if (req.body && typeof req.body === 'object' && Object.keys(req.body).length > 0) {
+        body = JSON.stringify(req.body);
+      }
+    }
+
+    const upstreamResponse = await fetch(upstreamUrl, {
+      method: req.method,
+      headers,
+      body,
+      redirect: 'manual',
+    });
+
+    res.status(upstreamResponse.status);
+    upstreamResponse.headers.forEach((value, key) => {
+      const lowerKey = key.toLowerCase();
+      if (['content-length', 'transfer-encoding', 'connection'].includes(lowerKey)) {
+        return;
+      }
+      res.setHeader(key, value);
+    });
+
+    if (upstreamResponse.status === 204 || upstreamResponse.status === 205) {
+      return res.end();
+    }
+
+    const contentType = upstreamResponse.headers.get('content-type') || '';
+    if (contentType.includes('application/json') || contentType.includes('text/') || contentType.includes('application/problem+json')) {
+      const text = await upstreamResponse.text();
+      return res.send(text);
+    }
+
+    const buffer = Buffer.from(await upstreamResponse.arrayBuffer());
+    return res.send(buffer);
+  } catch (error: any) {
+    return res.status(502).json({
+      error: error?.message || 'Nest proxy failed',
+      upstreamUrl,
+    });
+  }
 });
 
 app.use(express.static(publicDir));
@@ -673,11 +880,11 @@ app.get('/platform-console', (req: Request, res: Response) => {
 });
 
 app.get('/student', (req: Request, res: Response) => {
-  res.redirect(302, '/student-app.html');
+  res.status(200).send('Student workspace is now served at /student');
 });
 
 app.get('/student-app', (req: Request, res: Response) => {
-  res.redirect(302, '/student-app.html');
+  res.status(200).send('Student workspace is now served at /student');
 });
 
 // Set up local storage for video uploads
@@ -689,8 +896,7 @@ const storage = multer.diskStorage({
     cb(null, destination);
   },
   filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+    cb(null, buildCompactUploadFileName(file.originalname, file.fieldname || 'upload'));
   }
 });
 const upload = multer({ storage });
@@ -703,8 +909,7 @@ const pdfStorage = multer.diskStorage({
     cb(null, destination);
   },
   filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    cb(null, `${file.fieldname}-${uniqueSuffix}${path.extname(file.originalname)}`);
+    cb(null, buildCompactUploadFileName(file.originalname, file.fieldname || 'upload'));
   },
 });
 const pdfUpload = multer({ storage: pdfStorage });
@@ -801,13 +1006,16 @@ app.use('/api/courses', loadRoute('./routes/courses') ?? unavailableApiHandler);
 app.use('/api/enrollments', loadRoute('./routes/enrollments') ?? unavailableApiHandler);
 app.use('/api/payments', loadRoute('./routes/payments') ?? unavailableApiHandler);
 app.use('/api/quizzes', loadRoute('./routes/quizzes') ?? unavailableApiHandler);
+app.use('/api/media', loadRoute('./routes/media') ?? unavailableApiHandler);
+app.use('/api/modules', loadRoute('./routes/media') ?? unavailableApiHandler);
+app.use('/api/lesson-nodes', loadRoute('./routes/media') ?? unavailableApiHandler);
 
 // Health check
 app.get('/health', (req: Request, res: Response) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// Video upload endpoint (still in main for now, can be moved to a separate controller later)
+// Legacy video upload endpoint kept for older clients; stores files locally.
 app.post('/api/upload-video', authenticate, upload.single('video'), (req: AuthRequest, res: Response) => {
   if (!req.file) {
     return res.status(400).json({ error: 'No video file provided' });
@@ -826,7 +1034,7 @@ app.post('/api/course-builder/upload-pdf', authenticate, pdfUpload.single('file'
   const fileUrl = `/uploads/course-builder/${tenantPath}${req.file.filename}`;
   res.status(201).json({
     fileUrl,
-    fileName: req.file.originalname,
+    fileName: decodeMultipartFilename(req.file.originalname),
     mimeType: req.file.mimetype,
     sizeBytes: req.file.size,
   });

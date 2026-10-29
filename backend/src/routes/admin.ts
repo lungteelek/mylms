@@ -2,8 +2,9 @@ import { Router, Response } from 'express';
 import bcrypt from 'bcrypt';
 import fs from 'fs';
 import path from 'path';
-import { PlatformRole, TenantRole } from '@prisma/client';
+import { LicenseStatus, PlatformRole, Prisma, TenantRole } from '@prisma/client';
 import prisma from '../lib/prisma';
+import { getEffectiveTutorPricing, getPricingPackage, loadPricingConfig, savePricingConfig, type PricingConfig, type PricingPackageId } from '../lib/pricing';
 import { isInstructorRole } from '../lib/tenant';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { slugify } from '../utils/slugify';
@@ -66,6 +67,13 @@ function normalizeTutorSlugInput(value: string) {
   return String(value || '').trim().toLowerCase();
 }
 
+function toJsonValue(value: Record<string, unknown> | null | undefined) {
+  if (value === null || value === undefined) {
+    return Prisma.JsonNull;
+  }
+  return value as Prisma.InputJsonValue;
+}
+
 function validateTutorSlugInput(value: string) {
   const slug = normalizeTutorSlugInput(value);
   if (slug.length < 4) {
@@ -103,10 +111,28 @@ function buildDefaultLandingPage(tenantName: string) {
       --accent: #7dd3fc;
       --accent-2: #34d399;
     }
+    @font-face {
+      font-family: 'Sarabun';
+      src: url('/fonts/Sarabun-Light.ttf') format('truetype');
+      font-weight: 300;
+      font-style: normal;
+    }
+    @font-face {
+      font-family: 'Sarabun';
+      src: url('/fonts/Sarabun-Regular.ttf') format('truetype');
+      font-weight: 400;
+      font-style: normal;
+    }
+    @font-face {
+      font-family: 'Sarabun';
+      src: url('/fonts/Sarabun-Bold.ttf') format('truetype');
+      font-weight: 700;
+      font-style: normal;
+    }
     * { box-sizing: border-box; }
     html, body { margin: 0; min-height: 100%; }
     body {
-      font-family: Inter, "Noto Sans Thai", system-ui, sans-serif;
+      font-family: Sarabun, "Noto Sans Thai", system-ui, sans-serif;
       background:
         radial-gradient(circle at top, rgba(56, 189, 248, 0.22), transparent 32%),
         radial-gradient(circle at 20% 20%, rgba(52, 211, 153, 0.16), transparent 28%),
@@ -402,6 +428,411 @@ router.get('/students', authenticate, async (req: AuthRequest, res: Response) =>
   }
 });
 
+router.get('/tutors', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    if (!isAdminRole(req.user?.role)) {
+      return res.status(403).json({ error: 'ไม่มีสิทธิ์เข้าถึง' });
+    }
+
+    const memberships = await prisma.tenantMembership.findMany({
+      where: {
+        role: 'OWNER',
+      },
+      include: {
+        tenant: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            createdAt: true,
+          },
+        },
+        user: {
+          select: {
+            id: true,
+            email: true,
+            name: true,
+            platformRole: true,
+            createdAt: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    const tutors = memberships.map((membership) => ({
+      tenant: {
+        id: membership.tenant.id,
+        name: membership.tenant.name,
+        slug: membership.tenant.slug,
+        createdAt: membership.tenant.createdAt,
+        url: `https://${membership.tenant.slug}.${process.env.APP_DOMAIN || 'coursechic.com'}/`,
+      },
+      tutor: {
+        id: membership.user.id,
+        email: membership.user.email,
+        name: membership.user.name,
+        platformRole: membership.user.platformRole,
+        createdAt: membership.user.createdAt,
+      },
+      role: membership.role,
+    }));
+
+    res.json({
+      total: tutors.length,
+      tutors,
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get('/pricing', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    if (!isAdminRole(req.user?.role)) {
+      return res.status(403).json({ error: 'ไม่มีสิทธิ์เข้าถึง' });
+    }
+
+    const config = await loadPricingConfig();
+    const memberships = await prisma.tenantMembership.findMany({
+      where: {
+        role: 'OWNER',
+      },
+      include: {
+        tenant: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+          },
+        },
+      },
+    });
+
+    const tenantBySlug = new Map(memberships.map((membership) => [membership.tenant.slug, membership.tenant] as const));
+    const overrides = config.overrides
+      .map((override) => ({
+        ...override,
+        tenant: tenantBySlug.get(override.tenantSlug) || null,
+        effectivePackage: getPricingPackage(config, override.packageId),
+      }))
+      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+
+    res.json({
+      updatedAt: config.updatedAt,
+      defaults: config.defaults,
+      overrides,
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.put('/pricing', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    if (!isAdminRole(req.user?.role)) {
+      return res.status(403).json({ error: 'ไม่มีสิทธิ์เข้าถึง' });
+    }
+
+    const body = req.body as Partial<PricingConfig>;
+    const saved = await savePricingConfig(body);
+    res.json({
+      updatedAt: saved.updatedAt,
+      defaults: saved.defaults,
+      overrides: saved.overrides,
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get('/billing/profiles', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    if (!isAdminRole(req.user?.role)) {
+      return res.status(403).json({ error: 'ไม่มีสิทธิ์เข้าถึง' });
+    }
+
+    const profiles = await prisma.tutorBillingProfile.findMany({
+      include: {
+        tenant: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+          },
+        },
+      },
+      orderBy: [{ updatedAt: 'desc' }],
+    });
+
+    res.json({
+      total: profiles.length,
+      profiles: profiles.map((profile) => ({
+        ...profile,
+        revenueSharePct: profile.revenueSharePct === null ? null : Number(profile.revenueSharePct),
+      })),
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.put('/billing/profiles/:tenantSlug', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    if (!isAdminRole(req.user?.role)) {
+      return res.status(403).json({ error: 'ไม่มีสิทธิ์เข้าถึง' });
+    }
+
+    const tenantSlug = String(req.params.tenantSlug || '').trim().toLowerCase();
+    const tenant = await prisma.organization.findUnique({ where: { slug: tenantSlug } });
+    if (!tenant) {
+      return res.status(404).json({ error: 'ไม่พบ tenant' });
+    }
+
+    const body = req.body as {
+      billingModel?: 'MONTHLY' | 'REVENUE_SHARE';
+      checkoutOwner?: 'PLATFORM' | 'TUTOR';
+      studentAccountMode?: 'PLATFORM_MANAGED' | 'TUTOR_MANAGED';
+      monthlyFeeMinor?: number | string | null;
+      revenueSharePct?: number | string | null;
+      settlementDelayDays?: number | string | null;
+      currency?: string;
+      active?: boolean;
+      notes?: string;
+      metadata?: Record<string, unknown> | null;
+    };
+
+    const profile = await prisma.tutorBillingProfile.upsert({
+      where: { tenantId: tenant.id },
+      create: {
+        tenantId: tenant.id,
+        billingModel: body.billingModel || 'REVENUE_SHARE',
+        checkoutOwner: body.checkoutOwner || 'PLATFORM',
+        studentAccountMode: body.studentAccountMode || 'PLATFORM_MANAGED',
+        monthlyFeeMinor: body.monthlyFeeMinor === null || body.monthlyFeeMinor === undefined || body.monthlyFeeMinor === '' ? null : Number(body.monthlyFeeMinor),
+        revenueSharePct: body.revenueSharePct === null || body.revenueSharePct === undefined || body.revenueSharePct === '' ? null : Number(body.revenueSharePct),
+        settlementDelayDays: body.settlementDelayDays === null || body.settlementDelayDays === undefined || body.settlementDelayDays === '' ? 7 : Number(body.settlementDelayDays),
+        currency: String(body.currency || 'THB'),
+        active: body.active ?? true,
+        notes: body.notes?.trim() || null,
+        metadata: toJsonValue(body.metadata),
+      },
+      update: {
+        billingModel: body.billingModel || undefined,
+        checkoutOwner: body.checkoutOwner || undefined,
+        studentAccountMode: body.studentAccountMode || undefined,
+        monthlyFeeMinor: body.monthlyFeeMinor === null || body.monthlyFeeMinor === undefined || body.monthlyFeeMinor === '' ? null : Number(body.monthlyFeeMinor),
+        revenueSharePct: body.revenueSharePct === null || body.revenueSharePct === undefined || body.revenueSharePct === '' ? null : Number(body.revenueSharePct),
+        settlementDelayDays: body.settlementDelayDays === null || body.settlementDelayDays === undefined || body.settlementDelayDays === '' ? undefined : Number(body.settlementDelayDays),
+        currency: body.currency?.trim() || undefined,
+        active: body.active ?? undefined,
+        notes: body.notes?.trim() ?? undefined,
+        metadata: body.metadata === undefined ? undefined : toJsonValue(body.metadata),
+      },
+      include: {
+        tenant: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+          },
+        },
+      },
+    });
+
+    res.json({
+      billingProfile: {
+        ...profile,
+        revenueSharePct: profile.revenueSharePct === null ? null : Number(profile.revenueSharePct),
+      },
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get('/courses/:courseId/pricing', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    if (!isAdminRole(req.user?.role)) {
+      return res.status(403).json({ error: 'ไม่มีสิทธิ์เข้าถึง' });
+    }
+
+    const courseId = Number(req.params.courseId);
+    const course = await prisma.course.findUnique({
+      where: { id: courseId },
+      include: {
+        tenant: { select: { id: true, name: true, slug: true } },
+        pricing: true,
+        discountCampaigns: {
+          orderBy: [{ priority: 'desc' }, { updatedAt: 'desc' }],
+        },
+      },
+    });
+
+    if (!course) {
+      return res.status(404).json({ error: 'ไม่พบคอร์ส' });
+    }
+
+    res.json({
+      course: {
+        id: course.id,
+        title: course.title,
+        tenant: course.tenant,
+      },
+      pricing: course.pricing
+        ? {
+            ...course.pricing,
+            priceMinor: course.pricing.priceMinor,
+            compareAtPriceMinor: course.pricing.compareAtPriceMinor,
+          }
+        : null,
+      discounts: course.discountCampaigns.map((discount) => ({
+        ...discount,
+        discountValue: discount.discountValue === null ? null : Number(discount.discountValue),
+      })),
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.put('/courses/:courseId/pricing', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    if (!isAdminRole(req.user?.role)) {
+      return res.status(403).json({ error: 'ไม่มีสิทธิ์เข้าถึง' });
+    }
+
+    const courseId = Number(req.params.courseId);
+    const course = await prisma.course.findUnique({
+      where: { id: courseId },
+      select: { id: true, tenantId: true, title: true },
+    });
+    if (!course) {
+      return res.status(404).json({ error: 'ไม่พบคอร์ส' });
+    }
+
+    const body = req.body as {
+      priceMinor?: number | string;
+      compareAtPriceMinor?: number | string | null;
+      currency?: string;
+      allowCoupons?: boolean;
+      allowPromotions?: boolean;
+      showPricePublicly?: boolean;
+      salesStartsAt?: string | null;
+      salesEndsAt?: string | null;
+      metadata?: Record<string, unknown> | null;
+    };
+
+    const pricing = await prisma.coursePricing.upsert({
+      where: { courseId },
+      create: {
+        tenantId: course.tenantId,
+        courseId,
+        priceMinor: Number(body.priceMinor || 0),
+        compareAtPriceMinor: body.compareAtPriceMinor === null || body.compareAtPriceMinor === undefined || body.compareAtPriceMinor === '' ? null : Number(body.compareAtPriceMinor),
+        currency: String(body.currency || 'THB'),
+        allowCoupons: body.allowCoupons ?? true,
+        allowPromotions: body.allowPromotions ?? true,
+        showPricePublicly: body.showPricePublicly ?? true,
+        salesStartsAt: body.salesStartsAt ? new Date(body.salesStartsAt) : null,
+        salesEndsAt: body.salesEndsAt ? new Date(body.salesEndsAt) : null,
+        metadata: toJsonValue(body.metadata),
+      },
+      update: {
+        priceMinor: Number(body.priceMinor || 0),
+        compareAtPriceMinor: body.compareAtPriceMinor === null || body.compareAtPriceMinor === undefined || body.compareAtPriceMinor === '' ? null : Number(body.compareAtPriceMinor),
+        currency: body.currency?.trim() || undefined,
+        allowCoupons: body.allowCoupons ?? undefined,
+        allowPromotions: body.allowPromotions ?? undefined,
+        showPricePublicly: body.showPricePublicly ?? undefined,
+        salesStartsAt: body.salesStartsAt === null ? null : body.salesStartsAt ? new Date(body.salesStartsAt) : undefined,
+        salesEndsAt: body.salesEndsAt === null ? null : body.salesEndsAt ? new Date(body.salesEndsAt) : undefined,
+        metadata: body.metadata === undefined ? undefined : toJsonValue(body.metadata),
+      },
+    });
+
+    res.json({
+      course: {
+        id: course.id,
+        title: course.title,
+      },
+      pricing,
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post('/courses/:courseId/discounts', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    if (!isAdminRole(req.user?.role)) {
+      return res.status(403).json({ error: 'ไม่มีสิทธิ์เข้าถึง' });
+    }
+
+    const courseId = Number(req.params.courseId);
+    const course = await prisma.course.findUnique({
+      where: { id: courseId },
+      select: { id: true, tenantId: true, title: true },
+    });
+    if (!course) {
+      return res.status(404).json({ error: 'ไม่พบคอร์ส' });
+    }
+
+    const body = req.body as {
+      mode?: 'AUTO' | 'CODE';
+      code?: string | null;
+      name?: string;
+      description?: string | null;
+      discountType?: 'PERCENT' | 'AMOUNT' | 'FREE';
+      discountValue?: number | string | null;
+      discountAmountMinor?: number | string | null;
+      currency?: string;
+      status?: 'DRAFT' | 'ACTIVE' | 'PAUSED' | 'ENDED';
+      stackable?: boolean;
+      priority?: number | string;
+      maxRedemptions?: number | string | null;
+      maxRedemptionsPerStudent?: number | string | null;
+      startsAt?: string | null;
+      endsAt?: string | null;
+      metadata?: Record<string, unknown> | null;
+    };
+
+    const campaign = await prisma.discountCampaign.create({
+      data: {
+        tenantId: course.tenantId,
+        courseId,
+        mode: body.mode || 'AUTO',
+        code: body.code?.trim().toUpperCase() || null,
+        name: body.name?.trim() || 'New discount campaign',
+        description: body.description?.trim() || null,
+        discountType: body.discountType || 'PERCENT',
+        discountValue: body.discountValue === null || body.discountValue === undefined || body.discountValue === '' ? null : Number(body.discountValue),
+        discountAmountMinor: body.discountAmountMinor === null || body.discountAmountMinor === undefined || body.discountAmountMinor === '' ? null : Number(body.discountAmountMinor),
+        currency: String(body.currency || 'THB'),
+        status: body.status || 'DRAFT',
+        stackable: body.stackable ?? false,
+        priority: body.priority === null || body.priority === undefined || body.priority === '' ? 0 : Number(body.priority),
+        maxRedemptions: body.maxRedemptions === null || body.maxRedemptions === undefined || body.maxRedemptions === '' ? null : Number(body.maxRedemptions),
+        maxRedemptionsPerStudent: body.maxRedemptionsPerStudent === null || body.maxRedemptionsPerStudent === undefined || body.maxRedemptionsPerStudent === '' ? null : Number(body.maxRedemptionsPerStudent),
+        startsAt: body.startsAt ? new Date(body.startsAt) : null,
+        endsAt: body.endsAt ? new Date(body.endsAt) : null,
+        metadata: toJsonValue(body.metadata),
+      },
+    });
+
+    res.status(201).json({
+      campaign: {
+        ...campaign,
+        discountValue: campaign.discountValue === null ? null : Number(campaign.discountValue),
+      },
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 router.post('/tutors', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     if (!isAdminRole(req.user?.role)) {
@@ -414,12 +845,14 @@ router.post('/tutors', authenticate, async (req: AuthRequest, res: Response) => 
       email,
       password = 'password123',
       subdomain,
+      packageId,
     } = req.body as {
       name?: string;
       slug?: string;
       email?: string;
       password?: string;
       subdomain?: string;
+      packageId?: string;
     };
 
     const cleanName = String(name || '').trim();
@@ -448,12 +881,66 @@ router.post('/tutors', authenticate, async (req: AuthRequest, res: Response) => 
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
+    const pricingConfig = await loadPricingConfig();
+    const effectivePricing = getEffectiveTutorPricing(pricingConfig, cleanSlug, packageId as PricingPackageId | undefined);
+    const packageConfig = effectivePricing.package;
+    const renewalDate = new Date();
+    renewalDate.setMonth(renewalDate.getMonth() + effectivePricing.renewalIntervalMonths);
+    const defaultBillingModel = packageConfig.revenueSharePct === null ? 'MONTHLY' : 'REVENUE_SHARE';
+    const billingModel = (req.body?.billingModel || defaultBillingModel) as 'MONTHLY' | 'REVENUE_SHARE';
+    const checkoutOwner = (req.body?.checkoutOwner || (billingModel === 'MONTHLY' ? 'TUTOR' : 'PLATFORM')) as 'PLATFORM' | 'TUTOR';
+    const studentAccountMode = (req.body?.studentAccountMode || (billingModel === 'MONTHLY' ? 'TUTOR_MANAGED' : 'PLATFORM_MANAGED')) as 'PLATFORM_MANAGED' | 'TUTOR_MANAGED';
 
     const result = await prisma.$transaction(async (tx) => {
       const tenant = await tx.organization.create({
         data: {
           name: cleanName,
           slug: cleanSlug,
+        },
+      });
+
+      const billingProfile = await tx.tutorBillingProfile.create({
+        data: {
+          tenantId: tenant.id,
+          billingModel,
+          checkoutOwner,
+          studentAccountMode,
+          monthlyFeeMinor: packageConfig.monthlyFee === null ? null : Math.round(packageConfig.monthlyFee * 100),
+          revenueSharePct: packageConfig.revenueSharePct === null ? null : Number(packageConfig.revenueSharePct),
+          settlementDelayDays: billingModel === 'MONTHLY' ? 0 : 7,
+          currency: 'THB',
+          active: true,
+          notes: packageConfig.note,
+          metadata: {
+            packageId: packageConfig.id,
+            promoFreeMonths: effectivePricing.promoFreeMonths,
+            promoEnabled: effectivePricing.promoEnabled,
+            renewalIntervalMonths: effectivePricing.renewalIntervalMonths,
+          },
+        },
+      });
+
+      await tx.license.create({
+        data: {
+          tenantId: tenant.id,
+          status: LicenseStatus.TRIAL,
+          plan: packageConfig.id,
+          expiresAt: renewalDate,
+          issuedTo: cleanName,
+          metadata: {
+            pricing: {
+              packageId: packageConfig.id,
+              monthlyFee: packageConfig.monthlyFee,
+              revenueSharePct: packageConfig.revenueSharePct,
+              videoQuotaGb: packageConfig.videoQuotaGb,
+              promoFreeMonths: effectivePricing.promoFreeMonths,
+              promoEnabled: effectivePricing.promoEnabled,
+              renewalIntervalMonths: effectivePricing.renewalIntervalMonths,
+              billingModel,
+              checkoutOwner,
+              studentAccountMode,
+            },
+          },
         },
       });
 
@@ -483,7 +970,7 @@ router.post('/tutors', authenticate, async (req: AuthRequest, res: Response) => 
         fs.mkdirSync(path.join(tenantLandingDir, 'assets'), { recursive: true });
       }
 
-      return { tenant, tutor };
+      return { tenant, tutor, billingProfile };
     });
 
     const wildCardHost = `${cleanSlug}.${process.env.APP_DOMAIN || 'coursechic.com'}`;
@@ -501,6 +988,18 @@ router.post('/tutors', authenticate, async (req: AuthRequest, res: Response) => 
           email: result.tutor.email,
           name: result.tutor.name,
         },
+      },
+      pricing: {
+        packageId: packageConfig.id,
+        monthlyFee: packageConfig.monthlyFee,
+        revenueSharePct: packageConfig.revenueSharePct,
+        videoQuotaGb: packageConfig.videoQuotaGb,
+        promoFreeMonths: effectivePricing.promoFreeMonths,
+        renewalIntervalMonths: effectivePricing.renewalIntervalMonths,
+        expiresAt: renewalDate,
+        billingModel: result.billingProfile.billingModel,
+        checkoutOwner: result.billingProfile.checkoutOwner,
+        studentAccountMode: result.billingProfile.studentAccountMode,
       },
     });
   } catch (error: any) {

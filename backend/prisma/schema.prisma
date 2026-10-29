@@ -4,7 +4,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
 }
 
 model Organization {
@@ -20,6 +20,12 @@ model Organization {
   quizAttempts QuizAttempt[]
   licenses     License[]
   featureFlags FeatureFlag[]
+  billingProfile TutorBillingProfile?
+  coursePricings CoursePricing[]
+  discountCampaigns DiscountCampaign[]
+  discountRedemptions DiscountRedemption[]
+  studentOrders StudentOrder[]
+  tutorPayouts TutorPayout[]
   createdAt    DateTime         @default(now())
   updatedAt    DateTime         @updatedAt
 }
@@ -34,6 +40,8 @@ model User {
   courses       Course[]           @relation("InstructorCourses")
   enrollments   Enrollment[]
   quizAttempts  QuizAttempt[]
+  studentOrders StudentOrder[]
+  discountRedemptions DiscountRedemption[]
   createdAt     DateTime           @default(now())
   updatedAt     DateTime           @updatedAt
 }
@@ -71,18 +79,75 @@ enum LicenseStatus {
   EXPIRED
 }
 
+enum TutorBillingModel {
+  MONTHLY
+  REVENUE_SHARE
+}
+
+enum CheckoutOwner {
+  PLATFORM
+  TUTOR
+}
+
+enum StudentAccountMode {
+  PLATFORM_MANAGED
+  TUTOR_MANAGED
+}
+
+enum DiscountCampaignMode {
+  AUTO
+  CODE
+}
+
+enum DiscountType {
+  PERCENT
+  AMOUNT
+  FREE
+}
+
+enum DiscountStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  ENDED
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+  CANCELED
+}
+
+enum PayoutStatus {
+  PENDING
+  PROCESSING
+  PAID
+  FAILED
+}
+
 model Course {
   id           Int          @id @default(autoincrement())
   tenantId     Int
   title        String
+  slug         String?
+  status       String       @default("draft")
+  publishedAt  DateTime?
   description  String?
+  subject      String?
+  level        String?
   instructorId Int
   tenant       Organization @relation(fields: [tenantId], references: [id])
   instructor   User         @relation("InstructorCourses", fields: [instructorId], references: [id])
   modules      Module[]
   enrollments  Enrollment[]
+  pricing      CoursePricing?
+  discountCampaigns DiscountCampaign[]
+  studentOrders StudentOrder[]
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
+  courseOrder  Int          @default(0)
 }
 
 model Module {
@@ -96,6 +161,9 @@ model Module {
   course      Course       @relation(fields: [courseId], references: [id])
   quizzes     Quiz[]
   order       Int          @default(0)
+  estimatedMinutes Int      @default(0)
+  parentId    Int?
+  nodeType    String       @default("LESSON")
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
 }
@@ -116,7 +184,7 @@ model Question {
   id            Int          @id @default(autoincrement())
   tenantId      Int
   text          String
-  options       String[] // Array of strings for choices
+  options       Json // JSON array of strings for choices
   correctAnswer Int      // Index of correct option
   quizId        Int
   tenant        Organization @relation(fields: [tenantId], references: [id])
@@ -142,8 +210,11 @@ model Enrollment {
   userId    Int
   user      User         @relation(fields: [userId], references: [id])
   courseId  Int
+  orderId   Int?         @unique
   tenant    Organization @relation(fields: [tenantId], references: [id])
   course    Course       @relation(fields: [courseId], references: [id])
+  order     StudentOrder? @relation(fields: [orderId], references: [id])
+  discountRedemptions DiscountRedemption[]
   progress  Float        @default(0.0) // 0 to 100
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
@@ -176,4 +247,159 @@ model FeatureFlag {
   tenant     Organization @relation(fields: [tenantId], references: [id])
 
   @@unique([tenantId, key])
+}
+
+model PlatformPricingConfig {
+  id         Int      @id @default(autoincrement())
+  key        String   @unique @default("default")
+  payload    Json
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model TutorBillingProfile {
+  id                Int               @id @default(autoincrement())
+  tenantId          Int               @unique
+  billingModel      TutorBillingModel @default(REVENUE_SHARE)
+  checkoutOwner     CheckoutOwner     @default(PLATFORM)
+  studentAccountMode StudentAccountMode @default(PLATFORM_MANAGED)
+  monthlyFeeMinor   Int?
+  revenueSharePct   Float?
+  settlementDelayDays Int             @default(7)
+  currency          String            @default("THB")
+  active            Boolean           @default(true)
+  notes             String?
+  metadata          Json?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  tenant            Organization      @relation(fields: [tenantId], references: [id])
+  coursePricings    CoursePricing[]
+  discountCampaigns DiscountCampaign[]
+  payouts           TutorPayout[]
+}
+
+model CoursePricing {
+  id               Int          @id @default(autoincrement())
+  tenantId         Int
+  courseId         Int          @unique
+  tutorBillingProfileId Int?
+  priceMinor       Int
+  compareAtPriceMinor Int?
+  currency         String       @default("THB")
+  allowCoupons     Boolean      @default(true)
+  allowPromotions  Boolean      @default(true)
+  showPricePublicly Boolean     @default(true)
+  salesStartsAt    DateTime?
+  salesEndsAt      DateTime?
+  metadata         Json?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  tenant           Organization @relation(fields: [tenantId], references: [id])
+  course           Course       @relation(fields: [courseId], references: [id])
+  billingProfile   TutorBillingProfile? @relation(fields: [tutorBillingProfileId], references: [id])
+}
+
+model DiscountCampaign {
+  id                    Int                @id @default(autoincrement())
+  tenantId              Int
+  courseId              Int?
+  tutorBillingProfileId  Int?
+  mode                  DiscountCampaignMode @default(AUTO)
+  code                  String?
+  name                  String
+  description           String?
+  discountType          DiscountType
+  discountValue         Float?
+  discountAmountMinor   Int?
+  currency              String             @default("THB")
+  status                DiscountStatus     @default(DRAFT)
+  stackable             Boolean            @default(false)
+  priority              Int                @default(0)
+  maxRedemptions        Int?
+  maxRedemptionsPerStudent Int?
+  startsAt              DateTime?
+  endsAt                DateTime?
+  metadata              Json?
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+  tenant                Organization       @relation(fields: [tenantId], references: [id])
+  course                Course?            @relation(fields: [courseId], references: [id])
+  billingProfile        TutorBillingProfile? @relation(fields: [tutorBillingProfileId], references: [id])
+  redemptions           DiscountRedemption[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId, courseId, status])
+}
+
+model DiscountRedemption {
+  id                 Int              @id @default(autoincrement())
+  tenantId           Int
+  campaignId         Int
+  userId             Int
+  orderId            Int?             @unique
+  enrollmentId       Int?             @unique
+  discountAmountMinor Int?
+  currency           String           @default("THB")
+  redeemedAt         DateTime         @default(now())
+  metadata           Json?
+  tenant             Organization     @relation(fields: [tenantId], references: [id])
+  campaign           DiscountCampaign @relation(fields: [campaignId], references: [id])
+  user               User             @relation(fields: [userId], references: [id])
+  order              StudentOrder?    @relation(fields: [orderId], references: [id])
+  enrollment         Enrollment?      @relation(fields: [enrollmentId], references: [id])
+
+  @@index([tenantId, campaignId])
+  @@index([tenantId, userId])
+}
+
+model StudentOrder {
+  id                    Int          @id @default(autoincrement())
+  tenantId              Int
+  courseId              Int
+  userId                Int
+  billingModel          TutorBillingModel
+  checkoutOwner         CheckoutOwner
+  status                OrderStatus   @default(PENDING)
+  grossAmountMinor      Int
+  discountAmountMinor   Int           @default(0)
+  netAmountMinor        Int
+  currency              String        @default("THB")
+  paymentProvider       String?
+  providerSessionId     String?
+  providerPaymentId     String?
+  platformFeeMinor      Int?
+  tutorPayoutMinor      Int?
+  pricingSnapshot       Json?
+  metadata              Json?
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+  tenant                Organization  @relation(fields: [tenantId], references: [id])
+  course                Course        @relation(fields: [courseId], references: [id])
+  user                  User          @relation(fields: [userId], references: [id])
+  enrollment            Enrollment?
+  discountRedemptions   DiscountRedemption[]
+
+  @@index([tenantId, courseId, status])
+  @@index([tenantId, userId, status])
+}
+
+model TutorPayout {
+  id                 Int               @id @default(autoincrement())
+  tenantId           Int
+  billingProfileId    Int?
+  status             PayoutStatus      @default(PENDING)
+  grossAmountMinor   Int
+  platformFeeMinor   Int               @default(0)
+  tutorNetAmountMinor Int
+  currency           String            @default("THB")
+  provider          String?
+  providerPayoutId  String?
+  settledAt         DateTime?
+  metadata          Json?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  tenant            Organization      @relation(fields: [tenantId], references: [id])
+  billingProfile    TutorBillingProfile? @relation(fields: [billingProfileId], references: [id])
+
+  @@index([tenantId, status])
 }

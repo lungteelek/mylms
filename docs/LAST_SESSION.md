@@ -1,6 +1,6 @@
 # Last Session Snapshot
 
-Generated: 2026-06-05 09:30:00 +07
+Generated: 2026-06-27 13:04:52 +07
 
 Project root: `/home/mylms/mylms_project`
 
@@ -13,7 +13,125 @@ Project root: `/home/mylms/mylms_project`
 
 ## Repo State
 
-Git metadata is unavailable from this environment.
+### Branch
+
+```text
+main
+```
+### Status
+
+```text
+ M .codex/run/backend-nest.log
+ M .codex/run/backend-nest.pid
+ M .codex/run/backend.pid
+ M backend-nest/dist/auth/auth.controller.d.ts
+ M backend-nest/dist/auth/auth.controller.js
+ M backend-nest/dist/auth/auth.service.d.ts
+ M backend-nest/dist/auth/auth.service.js
+ M backend-nest/dist/auth/strategies/jwt.strategy.d.ts
+ M backend-nest/dist/auth/strategies/jwt.strategy.js
+ M backend-nest/dist/bootstrap/schema-bootstrap.service.d.ts
+ M backend-nest/dist/bootstrap/schema-bootstrap.service.js
+ M backend-nest/dist/common/guards/jwt-auth.guard.d.ts
+ M backend-nest/dist/common/guards/jwt-auth.guard.js
+ M backend-nest/dist/courses/course-tree.util.d.ts
+ M backend-nest/dist/courses/course-tree.util.js
+ M backend-nest/dist/courses/courses.controller.d.ts
+ M backend-nest/dist/courses/courses.controller.js
+ M backend-nest/dist/courses/courses.repository.d.ts
+ M backend-nest/dist/courses/courses.repository.js
+ M backend-nest/dist/courses/courses.service.d.ts
+ M backend-nest/dist/courses/courses.service.js
+ M backend-nest/dist/courses/lesson-nodes.controller.d.ts
+ M backend-nest/dist/courses/lesson-nodes.service.d.ts
+ M backend-nest/dist/courses/lesson-nodes.service.js
+ M backend-nest/dist/courses/types/course.types.d.ts
+ M backend-nest/dist/main.js
+ M backend-nest/dist/prisma/prisma.service.d.ts
+ M backend-nest/dist/prisma/prisma.service.js
+ M backend-nest/dist/tsconfig.tsbuildinfo
+ M backend-nest/package.json
+ M backend-nest/src/auth/auth.controller.ts
+ M backend-nest/src/auth/auth.service.ts
+ M backend-nest/src/auth/strategies/jwt.strategy.ts
+ M backend-nest/src/bootstrap/schema-bootstrap.service.ts
+ M backend-nest/src/common/guards/jwt-auth.guard.ts
+ M backend-nest/src/courses/course-tree.util.ts
+ M backend-nest/src/courses/courses.controller.ts
+ M backend-nest/src/courses/courses.repository.ts
+ M backend-nest/src/courses/courses.service.ts
+ M backend-nest/src/courses/lesson-nodes.service.ts
+ M backend-nest/src/courses/types/course.types.ts
+ M backend-nest/src/main.ts
+ M backend-nest/src/prisma/prisma.service.ts
+ M backend-nest/tsconfig.build.tsbuildinfo
+ M backend/.env.example
+ M backend/package-lock.json
+ M backend/package.json
+ M backend/prisma/schema.prisma
+ M backend/prisma/seed.ts
+ M backend/public/admin-app.html
+ M backend/public/admin-style.css
+ M backend/public/app-data.js
+ M backend/public/components/course-builder-seed.js
+ M backend/public/components/course-builder.js
+ M backend/public/index.html
+ M backend/public/platform-console.html
+ M backend/public/student-app.html
+ M backend/public/student-style.css
+ M backend/src/index.ts
+ M backend/src/lib/tenant.ts
+ M backend/src/routes/admin.ts
+ M backend/src/routes/auth.ts
+ M backend/src/routes/courses.ts
+ M backend/src/routes/payments.ts
+ M backend/src/routes/tenant.ts
+ M backend/uploads/landing-pages/tutortan/index.html
+ M deploy/DEBIAN_DEPLOY.md
+ M deploy/nginx/coursechic.com.conf
+ M deploy/systemd/mylms-backend.service
+ M docs/LAST_SESSION.md
+ M docs/NEXT.md
+ M mobile/package.json
+ M mobile/src/screens/HomeScreen.tsx
+ M package.json
+ M scripts/demo-start.sh
+?? .nvmrc
+?? backend-nest/dist/courses/dto/reorder-courses.dto.d.ts
+?? backend-nest/dist/courses/dto/reorder-courses.dto.js
+?? backend-nest/dist/courses/media-marker.util.d.ts
+?? backend-nest/dist/courses/media-marker.util.js
+?? backend-nest/src/courses/dto/reorder-courses.dto.ts
+?? backend-nest/src/courses/media-marker.util.ts
+?? backend/dist/
+?? backend/public/fonts/
+?? backend/public/video-player.html
+?? backend/src/lib/multipart.ts
+?? backend/src/lib/pricing.ts
+?? backend/src/lib/storage-usage.ts
+?? backend/src/routes/media.ts
+?? backend/src/workers/
+?? backend/uploads/billing/
+?? backend/uploads/landing-pages/pricing-flow-qa-2/
+?? backend/uploads/landing-pages/pricing-flow-qa-3/
+?? backend/uploads/landing-pages/pricing-flow-qa/
+?? backend/uploads/media-sources/
+?? backend/uploads/media/
+?? deploy/systemd/mylms-backend-nest.service
+?? deploy/systemd/mylms-educator-web.service
+?? deploy/systemd/mylms-media-worker.service
+?? deploy/systemd/mylms-student-web.service
+?? educator-web/
+?? scripts/manage-services.sh
+?? student-web/
+?? tmp-clean-r2-prefix.js
+?? tmp-clear-r2-media.js
+```
+### Recent Commits
+
+```text
+0137f161 Initial commit
+```
 
 ## Run State
 
@@ -28,12 +146,12 @@ Git metadata is unavailable from this environment.
 ### Backend PID
 
 ```text
-811296
+1290871
 ```
 ### Nest PID
 
 ```text
-811297
+1290872
 ```
 
 ## Recent Logs
@@ -49,36 +167,36 @@ Git metadata is unavailable from this environment.
 ### Nest Tail
 
 ```text
-[Nest] 811341  - 06/04/2026, 12:56:18 PM     LOG [RouterExplorer] Mapped {/api/progress/heartbeat, POST} route +0ms
-[Nest] 811341  - 06/04/2026, 12:56:18 PM     LOG [RoutesResolver] AiTutorController {/api/ai}: +0ms
-[Nest] 811341  - 06/04/2026, 12:56:18 PM     LOG [RouterExplorer] Mapped {/api/ai/tutor/query, POST} route +1ms
-[Nest] 811341  - 06/04/2026, 12:56:18 PM     LOG [RouterExplorer] Mapped {/api/ai/tutor/summary, POST} route +0ms
-[Nest] 811341  - 06/04/2026, 12:56:18 PM     LOG [RouterExplorer] Mapped {/api/ai/tutor/exercises, POST} route +1ms
-[Nest] 811341  - 06/04/2026, 12:56:18 PM     LOG [RouterExplorer] Mapped {/api/ai/sessions/:sessionId, GET} route +0ms
-[Nest] 811341  - 06/04/2026, 12:56:18 PM     LOG [RoutesResolver] KnowledgeBaseController {/api/knowledge-bases}: +0ms
-[Nest] 811341  - 06/04/2026, 12:56:18 PM     LOG [RouterExplorer] Mapped {/api/knowledge-bases, GET} route +1ms
-[Nest] 811341  - 06/04/2026, 12:56:18 PM     LOG [RouterExplorer] Mapped {/api/knowledge-bases, POST} route +0ms
-[Nest] 811341  - 06/04/2026, 12:56:18 PM     LOG [RouterExplorer] Mapped {/api/knowledge-bases/:knowledgeBaseId/documents, POST} route +1ms
-[Nest] 811341  - 06/04/2026, 12:56:18 PM     LOG [RouterExplorer] Mapped {/api/knowledge-bases/:knowledgeBaseId/documents/bulk, POST} route +0ms
-[Nest] 811341  - 06/04/2026, 12:56:18 PM     LOG [RouterExplorer] Mapped {/api/knowledge-bases/documents/:documentId/ingest, POST} route +1ms
-[Nest] 811341  - 06/04/2026, 12:56:18 PM     LOG [RouterExplorer] Mapped {/api/knowledge-bases/:knowledgeBaseId/documents, GET} route +0ms
-[Nest] 811341  - 06/04/2026, 12:56:18 PM     LOG [RouterExplorer] Mapped {/api/knowledge-bases/documents/:documentId, DELETE} route +1ms
-[Nest] 811341  - 06/04/2026, 12:56:18 PM     LOG [RouterExplorer] Mapped {/api/knowledge-bases/documents/:documentId, PATCH} route +0ms
-[Nest] 811341  - 06/04/2026, 12:56:18 PM     LOG [RoutesResolver] PlannerController {/api}: +0ms
-[Nest] 811341  - 06/04/2026, 12:56:18 PM     LOG [RouterExplorer] Mapped {/api/planner/availability, PUT} route +1ms
-[Nest] 811341  - 06/04/2026, 12:56:18 PM     LOG [RouterExplorer] Mapped {/api/planner/generate, POST} route +0ms
-[Nest] 811341  - 06/04/2026, 12:56:18 PM     LOG [RouterExplorer] Mapped {/api/planner/current, GET} route +0ms
-[Nest] 811341  - 06/04/2026, 12:56:18 PM     LOG [RouterExplorer] Mapped {/api/planner/replan, POST} route +1ms
-[Nest] 811341  - 06/04/2026, 12:56:18 PM     LOG [RouterExplorer] Mapped {/api/admin/students/:studentId/planner, GET} route +0ms
-[Nest] 811341  - 06/04/2026, 12:56:18 PM     LOG [RoutesResolver] NotificationsController {/api/notifications}: +0ms
-[Nest] 811341  - 06/04/2026, 12:56:18 PM     LOG [RouterExplorer] Mapped {/api/notifications/inbox, GET} route +1ms
-[Nest] 811341  - 06/04/2026, 12:56:18 PM     LOG [RouterExplorer] Mapped {/api/notifications/devices, POST} route +0ms
-[Nest] 811341  - 06/04/2026, 12:56:18 PM     LOG [RouterExplorer] Mapped {/api/notifications/devices/:platform/:pushToken, DELETE} route +0ms
-[Nest] 811341  - 06/04/2026, 12:56:18 PM     LOG [RouterExplorer] Mapped {/api/notifications/:notificationId/read, POST} route +1ms
-[Nest] 811341  - 06/04/2026, 12:56:18 PM     LOG [RouterExplorer] Mapped {/api/notifications/dispatch, POST} route +0ms
-[Nest] 811341  - 06/04/2026, 12:56:19 PM     LOG [NotificationSchedulerService] QUEUE_DRIVER is not bullmq, skipping recurring notification dispatch registration
-[Nest] 811341  - 06/04/2026, 12:56:20 PM     LOG [SchemaBootstrapService] Course tree bootstrap schema is ready
-[Nest] 811341  - 06/04/2026, 12:56:20 PM     LOG [NestApplication] Nest application successfully started +8ms
+[Nest] 1290910  - 06/10/2026, 11:17:34 AM     LOG [RouterExplorer] Mapped {/api/progress/heartbeat, POST} route +0ms
+[Nest] 1290910  - 06/10/2026, 11:17:34 AM     LOG [RoutesResolver] AiTutorController {/api/ai}: +0ms
+[Nest] 1290910  - 06/10/2026, 11:17:34 AM     LOG [RouterExplorer] Mapped {/api/ai/tutor/query, POST} route +0ms
+[Nest] 1290910  - 06/10/2026, 11:17:34 AM     LOG [RouterExplorer] Mapped {/api/ai/tutor/summary, POST} route +0ms
+[Nest] 1290910  - 06/10/2026, 11:17:34 AM     LOG [RouterExplorer] Mapped {/api/ai/tutor/exercises, POST} route +1ms
+[Nest] 1290910  - 06/10/2026, 11:17:34 AM     LOG [RouterExplorer] Mapped {/api/ai/sessions/:sessionId, GET} route +0ms
+[Nest] 1290910  - 06/10/2026, 11:17:34 AM     LOG [RoutesResolver] KnowledgeBaseController {/api/knowledge-bases}: +0ms
+[Nest] 1290910  - 06/10/2026, 11:17:34 AM     LOG [RouterExplorer] Mapped {/api/knowledge-bases, GET} route +0ms
+[Nest] 1290910  - 06/10/2026, 11:17:34 AM     LOG [RouterExplorer] Mapped {/api/knowledge-bases, POST} route +1ms
+[Nest] 1290910  - 06/10/2026, 11:17:34 AM     LOG [RouterExplorer] Mapped {/api/knowledge-bases/:knowledgeBaseId/documents, POST} route +0ms
+[Nest] 1290910  - 06/10/2026, 11:17:34 AM     LOG [RouterExplorer] Mapped {/api/knowledge-bases/:knowledgeBaseId/documents/bulk, POST} route +0ms
+[Nest] 1290910  - 06/10/2026, 11:17:34 AM     LOG [RouterExplorer] Mapped {/api/knowledge-bases/documents/:documentId/ingest, POST} route +1ms
+[Nest] 1290910  - 06/10/2026, 11:17:34 AM     LOG [RouterExplorer] Mapped {/api/knowledge-bases/:knowledgeBaseId/documents, GET} route +0ms
+[Nest] 1290910  - 06/10/2026, 11:17:34 AM     LOG [RouterExplorer] Mapped {/api/knowledge-bases/documents/:documentId, DELETE} route +0ms
+[Nest] 1290910  - 06/10/2026, 11:17:34 AM     LOG [RouterExplorer] Mapped {/api/knowledge-bases/documents/:documentId, PATCH} route +0ms
+[Nest] 1290910  - 06/10/2026, 11:17:34 AM     LOG [RoutesResolver] PlannerController {/api}: +0ms
+[Nest] 1290910  - 06/10/2026, 11:17:34 AM     LOG [RouterExplorer] Mapped {/api/planner/availability, PUT} route +1ms
+[Nest] 1290910  - 06/10/2026, 11:17:34 AM     LOG [RouterExplorer] Mapped {/api/planner/generate, POST} route +0ms
+[Nest] 1290910  - 06/10/2026, 11:17:34 AM     LOG [RouterExplorer] Mapped {/api/planner/current, GET} route +0ms
+[Nest] 1290910  - 06/10/2026, 11:17:34 AM     LOG [RouterExplorer] Mapped {/api/planner/replan, POST} route +1ms
+[Nest] 1290910  - 06/10/2026, 11:17:34 AM     LOG [RouterExplorer] Mapped {/api/admin/students/:studentId/planner, GET} route +0ms
+[Nest] 1290910  - 06/10/2026, 11:17:34 AM     LOG [RoutesResolver] NotificationsController {/api/notifications}: +0ms
+[Nest] 1290910  - 06/10/2026, 11:17:34 AM     LOG [RouterExplorer] Mapped {/api/notifications/inbox, GET} route +0ms
+[Nest] 1290910  - 06/10/2026, 11:17:34 AM     LOG [RouterExplorer] Mapped {/api/notifications/devices, POST} route +0ms
+[Nest] 1290910  - 06/10/2026, 11:17:34 AM     LOG [RouterExplorer] Mapped {/api/notifications/devices/:platform/:pushToken, DELETE} route +1ms
+[Nest] 1290910  - 06/10/2026, 11:17:34 AM     LOG [RouterExplorer] Mapped {/api/notifications/:notificationId/read, POST} route +0ms
+[Nest] 1290910  - 06/10/2026, 11:17:34 AM     LOG [RouterExplorer] Mapped {/api/notifications/dispatch, POST} route +0ms
+[Nest] 1290910  - 06/10/2026, 11:17:34 AM     LOG [NotificationSchedulerService] QUEUE_DRIVER is not bullmq, skipping recurring notification dispatch registration
+[Nest] 1290910  - 06/10/2026, 11:17:35 AM     LOG [SchemaBootstrapService] Course tree bootstrap schema is ready
+[Nest] 1290910  - 06/10/2026, 11:17:35 AM     LOG [NestApplication] Nest application successfully started +2ms
 ```
 
 ## Next File
@@ -93,9 +211,9 @@ Git metadata is unavailable from this environment.
 ## Auto Snapshot
 
 <!-- AUTO-SNAPSHOT:START -->
-- generated: 2026-06-05 09:30:00 +07
-- branch: unavailable
-- git status: unavailable
+- generated: 2026-06-27 13:04:52 +07
+- branch: main
+- git status:  M .codex/run/backend-nest.log; M .codex/run/backend-nest.pid; M .codex/run/backend.pid; M backend-nest/dist/auth/auth.controller.d.ts; M backend-nest/dist/auth/auth.controller.js;unavailable
 - services: express:stale-pid, nest:stale-pid
 - demo urls: http://localhost:3000/admin-app.html , http://localhost:3000/student-app.html
 <!-- AUTO-SNAPSHOT:END -->
@@ -118,21 +236,68 @@ Git metadata is unavailable from this environment.
 - ปรับ internal storage key และ payment session id ให้เข้าชุดกับ product naming
 - เพิ่ม flow ให้ tutor บันทึก HTML landing page เป็น `index.html` ของบัญชีองค์กร
 - เพิ่มธีม `cartoon`, `anime`, `cuteboy` ใน `student-app`
-- ปรับ `dark` login ให้ช่อง `Gmail` และ `Password` อ่านง่ายขึ้น
+- ปรับธีม `dark` ให้ช่อง login อ่านง่ายขึ้น
 - ปรับ layout `student-app` ให้เมนูและ progress ไม่ล้น
+- ลด refetch ของ `educator-web` เวลาหน้าจอเปลี่ยนขนาด และเก็บ responsive ของ tree action bar ให้ไม่ล้นบนจอแคบ
+- harden session restore ของ educator/student web ให้ล้าง `localStorage` ที่เสียรูปก่อน hydrate เพื่อกัน client-side crash จาก session เก่า
 
 ## In Progress
 
 - เช็ก flow สร้าง tutor + DNS + subdomain + course builder + landing page ให้จบครบ
 - ยืนยัน production deploy บน `coursechic.com` ไม่ redirect ไปโดเมนเก่า
+- วาง media pipeline สำหรับวิดีโอ: upload -> transcode -> transcript -> signed playback token -> R2 sync
+- ตั้งค่า `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_R2_BUCKET`, `CLOUDFLARE_R2_API_TOKEN`, `CLOUDFLARE_R2_PUBLIC_BASE_URL` บน production
+- HLS master/variant playlists และ segments ถูกสร้างขึ้นแล้ว และ student app รองรับ `hls.js` แล้ว: ใช้ HLS ถ้ามี, native HLS บน Safari, fallback mp4 ถ้าไม่ได้
+- auto transcript ใช้ `OPENAI_API_KEY` + ffmpeg audio extract ถ้ามี key; ถ้าไม่มีจะสร้าง fallback transcript จาก metadata เพื่อไม่ให้ flow ค้าง
+- admin upload วิดีโอมี progress bar + step chips แล้ว: upload / transcode / sync / done เพื่อให้ครูเห็นสถานะชัดขึ้น
+- transcode pipeline เปลี่ยนเป็น background job + status polling endpoint แล้ว เพื่อให้ progress บน admin เห็นเปอร์เซ็นต์จริง
+- admin มีรายการวิดีโอของทุก lesson node แล้ว พร้อมดึงสถานะจาก `/videos/status` และเปิดวิดีโอได้จาก row นั้น
+- admin lesson-node video list auto-refresh ตอนมีงาน processing อยู่ เพื่อเห็นสถานะแบบ live โดยไม่ต้อง reload หน้า
+- admin lesson-node video list มีปุ่ม retry สำหรับรายการที่ status failed แล้ว
+- `/videos/status` ส่ง `playbackUrl` กลับมาแล้ว และ `/videos/play` ใช้ token จาก manifest เป็น fallback ได้
+- media upload มี hard limit ที่ backend แล้ว: default 2048 MB, override ได้ด้วย `MEDIA_UPLOAD_MAX_MB`
+- admin upload panel ตรวจไฟล์ size ฝั่ง client แล้วและบอกชื่อไฟล์/ขนาดก่อนส่ง
+- admin upload panel รองรับ drag-and-drop แล้ว
+- media transcode job auto-retry ได้ 2 attempts ก่อน mark failed
+- admin upload panel รองรับ resumable upload สำหรับไฟล์ใหญ่กว่า threshold แล้ว
+- media policy ใหม่: max upload 2GB และ source video ต้องมีความละเอียดอย่างน้อย 720p
+- media cleanup ลบ local source/chunk/session และลบ R2 source หลัง transcode สำเร็จ
+- media cleanup scheduler กวาด session/chunk ค้างเกิน TTL อัตโนมัติแล้ว
+- admin resumable chunk upload retries each chunk up to 3 times before failing
+- media transcode is now queued durably to disk and processed by a worker loop that survives restarts
+- admin media jobs panel now shows queue/running/failed/done entries from backend
+- media routes now accept both `/api/modules/:id/videos/...` and `/api/lesson-nodes/:id/videos/...`
+- frontend media calls now point at the `lesson-nodes` alias while preserving the existing backend storage logic
+- admin upload selector now targets lesson nodes from the course tree, and student/course-builder UIs show lesson/video badges from `selectedCourseTree`
 
 ## Next Steps
 
-1. ตรวจ flow ใน browser จริง
-2. ถ้าต้องไป production ให้รัน deploy checklist บนเครื่องจริง
-3. ถ้ายังมี edge case ค่อยเก็บ inline validation และ copy ที่เหลือ
+### Educator web continuation
+
+1. ตรวจหน้า `lesson route`, `course detail`, และ `course tree editor` บน browser จริงอีกรอบว่าไม่มี component ไหนยังล้นหรือซ่อน action สำคัญเกินไป
+2. ถัดไปค่อยเก็บ theme consistency และ a11y ของ tab/toggle ให้ครบ
+
+### Existing product backlog
+
+1. ตรวจ flow ใน browser จริงหลัง switch ไป `lesson-nodes` alias ว่า upload/playback/status/transcript ยังครบทุกกรณี
+2. ถ้าจะยกชื่อ backend ให้เป็น `lessonNodeId` จริง ๆ ต้อง refactor storage/job key ภายในอีกชั้น
+3. ถ้าจะไป production ให้รัน deploy checklist บนเครื่องจริง
 4. หลัง deploy ทุกครั้งให้ restart backend service หรือ demo stack ก่อนทดสอบ debug route
 5. validation ชื่อ tutor / slug ต้องอยู่ตั้งแต่จุดสมัครหรือ register flow แม้ตอนนี้ยังไม่มีหน้า register แยก
+6. R2 sync ตอนนี้ใช้ Cloudflare API upload endpoint แบบ bearer token แล้ว ถ้า production ยังไม่เห็นไฟล์ ให้เช็ก env ก่อน
+7. ถ้าจะใช้ HLS ใน browser ทั่วไป ต้องเพิ่ม hls.js หรือทำ native Safari-only path; ตอนนี้ยัง fallback mp4
+8. media status endpoint ใช้จากหน้า admin แล้ว แต่ยังต้องตรวจ browser จริงว่าลิงก์เล่นวิดีโอเปิดได้ครบทุกกรณี
+9. live polling ในหน้า admin ควรหยุดเมื่อไม่มี item ที่ยัง processing เพื่อไม่กินทรัพยากรเกินจำเป็น
+10. retry วิดีโอที่ fail ควรมีข้อความบอกเหตุผลจาก backend ถ้า transcode รอบใหม่ยัง fail
+11. upload limit ควรสอดคล้องกับ disk quota / reverse proxy limit บน production ก่อนเปิดให้ user จริง
+12. client-side validation ควรตรงกับ backend limit เสมอไม่ให้ error message ขัดกัน
+13. auto-retry ไม่ควรทำให้คนเห็นสถานะค้างนานเกินไป ถ้า attempt แรก fail ควรบอกว่ากำลัง retry อยู่
+14. resumable upload ต้องระวัง timeout ของ proxy และขนาด chunk ให้เหมาะกับ server จริง
+15. source cleanup หลัง transcode ต้องไม่ลบก่อน transcript และต้องลบเฉพาะเมื่อ ready สำเร็จจริง
+16. cleanup scheduler ควรอ้างอิง TTL จาก env ให้ปรับได้ใน production
+17. chunk retry should surface the final failing chunk number in the upload note for easier debugging
+18. queue worker should expose a simple admin log view later if debugging needs more visibility
+19. media jobs panel should eventually support filtering by lesson node and direct jump to status detail
 
 ## Production Checklist: `tutortan`
 
@@ -173,7 +338,7 @@ sudo systemctl reload nginx
 - `backend/public/admin-console.html`
 - `backend/public/student-app.html`
 - `backend/public/index.html`
-- `backend/src/index.ts`
+- `backend/src/index.ts` (`/api/media` mount for media router)
 - `backend/src/middleware/auth.ts`
 - `backend/src/routes/admin.ts`
 - `deploy/nginx/coursechic.com.conf`

@@ -12,6 +12,14 @@ export class SchemaBootstrapService implements OnModuleInit {
   }
 
   private async ensureCourseTreeSchema() {
+    // The application now runs on the legacy Prisma SQLite schema. This
+    // bootstrap contains PostgreSQL/ltree DDL and must never be executed
+    // against SQLite (it would fail on BIGSERIAL, JSONB, GIST, and :: casts).
+    const databaseUrl = process.env.DATABASE_URL || '';
+    if (!databaseUrl || databaseUrl.startsWith('file:') || databaseUrl.endsWith('.db')) {
+      this.logger.log('Skipping PostgreSQL course-tree schema bootstrap for SQLite');
+      return;
+    }
     try {
       await this.prisma.$executeRawUnsafe(`CREATE EXTENSION IF NOT EXISTS ltree`);
       const hasVectorExtension = await this.ensureVectorExtension();
@@ -170,6 +178,7 @@ export class SchemaBootstrapService implements OnModuleInit {
           thumbnail_url TEXT,
           status TEXT NOT NULL DEFAULT 'draft',
           published_at TIMESTAMPTZ,
+          course_order INTEGER NOT NULL DEFAULT 0,
           created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
           updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
           UNIQUE (tenant_id, slug)
@@ -475,7 +484,38 @@ export class SchemaBootstrapService implements OnModuleInit {
         await this.prisma.$executeRawUnsafe(statement);
       }
 
+      await this.prisma.$executeRawUnsafe(`
+        ALTER TABLE courses
+        ADD COLUMN IF NOT EXISTS course_order INTEGER NOT NULL DEFAULT 0
+      `);
+
+      await this.prisma.$executeRawUnsafe(`
+        WITH tenant_orders AS (
+          SELECT
+            tenant_id,
+            COUNT(*) AS total_courses,
+            COUNT(*) FILTER (WHERE course_order <> 0) AS non_zero_courses
+          FROM courses
+          GROUP BY tenant_id
+        ),
+        ordered_courses AS (
+          SELECT
+            c.id,
+            ROW_NUMBER() OVER (PARTITION BY c.tenant_id ORDER BY c.created_at ASC, c.id ASC) - 1 AS next_course_order
+          FROM courses c
+          INNER JOIN tenant_orders t
+            ON t.tenant_id = c.tenant_id
+          WHERE t.total_courses > 1
+            AND t.non_zero_courses = 0
+        )
+        UPDATE courses c
+        SET course_order = ordered_courses.next_course_order
+        FROM ordered_courses
+        WHERE c.id = ordered_courses.id
+      `);
+
       await this.seedDefaults();
+      await this.syncSerialSequences();
 
       this.logger.log('Course tree bootstrap schema is ready');
     } catch (error) {
@@ -532,7 +572,7 @@ export class SchemaBootstrapService implements OnModuleInit {
     `);
 
     await this.prisma.$executeRawUnsafe(`
-      INSERT INTO courses (id, tenant_id, title, slug, description, subject, level, status, published_at)
+      INSERT INTO courses (id, tenant_id, title, slug, description, subject, level, status, published_at, course_order)
       VALUES
         (
           1,
@@ -543,18 +583,20 @@ export class SchemaBootstrapService implements OnModuleInit {
           'programming',
           'beginner',
           'published',
-          now()
+          now(),
+          0
         ),
         (
           2,
           1,
           'Advanced Backend with Node.js',
           'advanced-backend-with-node-js',
-          'Master Express, Prisma, and PostgreSQL.',
+          'Master Express, Prisma, and SQLite.',
           'programming',
           'intermediate',
           'published',
-          now()
+          now(),
+          1
         )
       ON CONFLICT (id) DO NOTHING
     `);
@@ -568,8 +610,8 @@ export class SchemaBootstrapService implements OnModuleInit {
         (4, 1, 1, 3, 'lesson', 'Learn about View, Text, and props', 'components_and_props.learn_about_view_text_and_props', 1, 0, true, 22),
         (5, 1, 2, NULL, 'section', 'Express Architecture', 'express_architecture', 0, 0, true, 14),
         (6, 1, 2, 5, 'lesson', 'Structure routes, services, and middleware', 'express_architecture.structure_routes_services_and_middleware', 1, 0, true, 24),
-        (7, 1, 2, NULL, 'section', 'Prisma and PostgreSQL', 'prisma_and_postgresql', 0, 1, true, 16),
-        (8, 1, 2, 7, 'lesson', 'Model relations and optimize database access', 'prisma_and_postgresql.model_relations_and_optimize_database_access', 1, 0, true, 26)
+        (7, 1, 2, NULL, 'section', 'Prisma and SQLite', 'prisma_and_sqlite', 0, 1, true, 16),
+        (8, 1, 2, 7, 'lesson', 'Model relations and optimize database access', 'prisma_and_sqlite.model_relations_and_optimize_database_access', 1, 0, true, 26)
       ON CONFLICT (id) DO NOTHING
     `);
 
@@ -699,6 +741,50 @@ export class SchemaBootstrapService implements OnModuleInit {
       VALUES (2, 'study_reminder', 'in_app', '{}'::jsonb, true)
       ON CONFLICT DO NOTHING
     `);
+  }
+
+  private async syncSerialSequences() {
+    const targets: Array<{ table: string; column: string }> = [
+      { table: 'tenants', column: 'id' },
+      { table: 'users', column: 'id' },
+      { table: 'oauth_accounts', column: 'id' },
+      { table: 'refresh_tokens', column: 'id' },
+      { table: 'tenant_memberships', column: 'id' },
+      { table: 'licenses', column: 'id' },
+      { table: 'feature_flags', column: 'id' },
+      { table: 'notification_devices', column: 'id' },
+      { table: 'notification_rules', column: 'id' },
+      { table: 'notifications', column: 'id' },
+      { table: 'courses', column: 'id' },
+      { table: 'lesson_nodes', column: 'id' },
+      { table: 'lesson_contents', column: 'id' },
+      { table: 'lesson_transcripts', column: 'id' },
+      { table: 'lesson_assets', column: 'id' },
+      { table: 'video_assets', column: 'id' },
+      { table: 'video_transcripts', column: 'id' },
+      { table: 'transcript_segments', column: 'id' },
+      { table: 'enrollments', column: 'id' },
+      { table: 'lesson_progress', column: 'id' },
+      { table: 'playback_sessions', column: 'id' },
+      { table: 'study_availability', column: 'id' },
+      { table: 'study_plans', column: 'id' },
+      { table: 'study_plan_items', column: 'id' },
+      { table: 'knowledge_bases', column: 'id' },
+      { table: 'kb_documents', column: 'id' },
+      { table: 'kb_chunks', column: 'id' },
+      { table: 'ai_chat_sessions', column: 'id' },
+      { table: 'ai_chat_messages', column: 'id' },
+    ];
+
+    for (const target of targets) {
+      await this.prisma.$executeRawUnsafe(`
+        SELECT setval(
+          pg_get_serial_sequence('${target.table}', '${target.column}'),
+          COALESCE((SELECT MAX(${target.column}) FROM ${target.table}), 1),
+          EXISTS (SELECT 1 FROM ${target.table})
+        )
+      `);
+    }
   }
 
   private async ensureVectorExtension() {

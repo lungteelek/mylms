@@ -1,20 +1,13 @@
 import 'dotenv/config';
 import { PrismaClient } from '@prisma/client';
-import { PrismaPg } from '@prisma/adapter-pg';
-import { Pool } from 'pg';
+import { PrismaBetterSqlite3 } from '@prisma/adapter-better-sqlite3';
 
 const globalForPrisma = global as unknown as {
   prisma: PrismaClient | undefined;
-  prismaPool: Pool | undefined;
 };
 
-const pool =
-  globalForPrisma.prismaPool ||
-  new Pool({
-    connectionString: process.env.DATABASE_URL || '',
-  });
-
-const adapter = new PrismaPg(pool);
+const databaseUrl = process.env.DATABASE_URL?.replace(/^file:/, '') || './data/mylms.db';
+const adapter = new PrismaBetterSqlite3({ url: databaseUrl });
 
 export const prisma =
   globalForPrisma.prisma ||
@@ -25,7 +18,6 @@ export const prisma =
 
 if (process.env.NODE_ENV !== 'production') {
   globalForPrisma.prisma = prisma;
-  globalForPrisma.prismaPool = pool;
 }
 
 export default prisma;

@@ -1,10 +1,12 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { RequestContext } from '../common/types/request-context.type';
-import { buildLessonTree, createNodePath, ensureNoTreeCycles } from './course-tree.util';
+import { buildLessonTree, createNodePath, ensureNoTreeCycles, ensureValidNodePlacement } from './course-tree.util';
 import { CoursesRepository } from './courses.repository';
 import { CreateCourseDto } from './dto/create-course.dto';
+import { ReorderCoursesDto } from './dto/reorder-courses.dto';
 import { ReorderTreeDto } from './dto/reorder-tree.dto';
-import { LessonAssetRow, LessonNodeTree, LessonTranscriptRow } from './types/course.types';
+import { LessonAssetRow, LessonNodeAssetItem, LessonNodeTree, LessonTranscriptRow } from './types/course.types';
+import { syncCourseMarker } from './media-marker.util';
 
 @Injectable()
 export class CoursesService {
@@ -21,8 +23,59 @@ export class CoursesService {
 
   async createCourse(user: RequestContext, body: CreateCourseDto) {
     const course = await this.coursesRepository.createCourse(user.tenantId, body);
+    const tenantSlug = await this.coursesRepository.findTenantSlug(user.tenantId);
+    if (tenantSlug) {
+      await syncCourseMarker({
+        tenantSlug,
+        courseId: course.id,
+        nextTitle: course.title,
+      }).catch((error) => {
+        console.error('Failed to sync course marker after create:', error);
+      });
+    }
     return {
       data: course,
+    };
+  }
+
+  async reorderCourses(user: RequestContext, body: ReorderCoursesDto) {
+    const updated = await this.coursesRepository.reorderCourses(user.tenantId, body.orderedCourseIds);
+    return {
+      data: {
+        updated,
+      },
+    };
+  }
+
+  async updateCourse(user: RequestContext, courseId: string, body: Partial<CreateCourseDto>) {
+    const current = await this.coursesRepository.findCourseById(user.tenantId, courseId);
+    if (!current) {
+      throw new NotFoundException('Course not found');
+    }
+
+    const updated = await this.coursesRepository.updateCourse(user.tenantId, courseId, {
+      title: body.title ?? null,
+      description: body.description ?? null,
+      subject: body.subject ?? null,
+      level: body.level ?? null,
+    });
+
+    if (updated?.title) {
+      const tenantSlug = await this.coursesRepository.findTenantSlug(user.tenantId);
+      if (tenantSlug) {
+        await syncCourseMarker({
+          tenantSlug,
+          courseId,
+          previousTitle: current.title,
+          nextTitle: updated.title,
+        }).catch((error) => {
+          console.error('Failed to sync course marker after rename:', error);
+        });
+      }
+    }
+
+    return {
+      data: updated,
     };
   }
 
@@ -60,6 +113,10 @@ export class CoursesService {
 
       ensureNoTreeCycles(move.nodeId, move.newParentId, nodeMap);
       const parent = move.newParentId ? nodeMap.get(move.newParentId) ?? null : null;
+      if (move.newParentId && !parent) {
+        throw new NotFoundException(`Lesson node ${move.newParentId} not found`);
+      }
+      ensureValidNodePlacement(currentNode.nodeType, move.newParentId ?? null, parent);
       const nextDepth = parent ? parent.depth + 1 : 0;
       const nextPath = createNodePath(parent?.path ?? null, currentNode.title);
 
@@ -105,13 +162,29 @@ export class CoursesService {
     };
   }
 
-  async deleteCourseTree(user: RequestContext, courseId: string) {
+  async unpublishCourse(user: RequestContext, courseId: string) {
     const course = await this.coursesRepository.findCourseById(user.tenantId, courseId);
     if (!course) {
       throw new NotFoundException('Course not found');
     }
 
-    await this.coursesRepository.deleteCourseTree(user.tenantId, courseId);
+    await this.coursesRepository.unpublishCourse(user.tenantId, courseId);
+    return {
+      data: {
+        id: courseId,
+        status: 'draft',
+        publishedAt: null,
+      },
+    };
+  }
+
+  async deleteCourse(user: RequestContext, courseId: string) {
+    const course = await this.coursesRepository.findCourseById(user.tenantId, courseId);
+    if (!course) {
+      throw new NotFoundException('Course not found');
+    }
+
+    await this.coursesRepository.deleteCourse(user.tenantId, courseId);
     return {
       data: {
         courseId,
@@ -121,14 +194,32 @@ export class CoursesService {
   }
 
   private attachAssets(nodes: LessonNodeTree[], assets: LessonAssetRow[]): LessonNodeTree[] {
-    const assetByNodeId = new Map<string, LessonAssetRow[]>();
+    const assetByNodeId = new Map<string, LessonNodeAssetItem[]>();
     for (const asset of assets) {
       const list = assetByNodeId.get(asset.lessonNodeId) || [];
-      list.push(asset);
+      list.push({
+        id: asset.id,
+        title: asset.title,
+        assetType: asset.assetType,
+        type:
+          asset.assetType === 'pdf'
+            ? 'pdf'
+            : asset.assetType === 'image'
+              ? 'image'
+              : asset.assetType === 'attachment'
+                ? 'attachment'
+                : 'url',
+        fileName: asset.title,
+        url: asset.fileUrl || asset.externalUrl || '',
+        fileUrl: asset.fileUrl || undefined,
+        externalUrl: asset.externalUrl || undefined,
+        mimeType: asset.mimeType,
+        sizeBytes: asset.sizeBytes,
+      });
       assetByNodeId.set(asset.lessonNodeId, list);
     }
 
-    const pickAsset = (rows: LessonAssetRow[]) => {
+    const pickAsset = (rows: LessonNodeAssetItem[]) => {
       const pdf = rows.find((asset) => asset.assetType === 'pdf');
       if (pdf) {
         return {
@@ -141,7 +232,31 @@ export class CoursesService {
         };
       }
 
-      const link = rows.find((asset) => asset.assetType === 'link' && asset.externalUrl);
+      const image = rows.find((asset) => asset.type === 'image' && asset.fileUrl);
+      if (image) {
+        return {
+          type: 'image' as const,
+          fileName: image.title || 'Image asset',
+          url: image.fileUrl || '',
+          fileUrl: image.fileUrl || undefined,
+          mimeType: image.mimeType,
+          sizeBytes: image.sizeBytes,
+        };
+      }
+
+      const attachment = rows.find((asset) => asset.type === 'attachment' && asset.fileUrl);
+      if (attachment) {
+        return {
+          type: 'attachment' as const,
+          fileName: attachment.title || 'Attachment asset',
+          url: attachment.fileUrl || '',
+          fileUrl: attachment.fileUrl || undefined,
+          mimeType: attachment.mimeType,
+          sizeBytes: attachment.sizeBytes,
+        };
+      }
+
+      const link = rows.find((asset) => asset.type === 'url' && asset.externalUrl);
       if (link) {
         return {
           type: 'url' as const,
@@ -161,6 +276,7 @@ export class CoursesService {
     return nodes.map((node) => ({
       ...node,
       asset: pickAsset(assetByNodeId.get(node.id) || []),
+      assets: assetByNodeId.get(node.id) || [],
       children: this.attachAssets(node.children || [], assets),
     }));
   }

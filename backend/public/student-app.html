@@ -4,13 +4,31 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Tutor Tan ผู้เรียน | coursechic.com</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Thai:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    @font-face {
+      font-family: 'Sarabun';
+      src: url('/fonts/Sarabun-Light.ttf') format('truetype');
+      font-weight: 300;
+      font-style: normal;
+    }
+    @font-face {
+      font-family: 'Sarabun';
+      src: url('/fonts/Sarabun-Regular.ttf') format('truetype');
+      font-weight: 400;
+      font-style: normal;
+    }
+    @font-face {
+      font-family: 'Sarabun';
+      src: url('/fonts/Sarabun-Bold.ttf') format('truetype');
+      font-weight: 700;
+      font-style: normal;
+    }
+    body{font-family:'Sarabun','Noto Sans Thai',sans-serif}
+  </style>
   <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
-  <link rel="stylesheet" href="/student-style.css?v=20260605u" />
+  <link rel="stylesheet" href="/student-style.css?v=20260627b" />
 </head>
 <body data-theme="pastel">
   <div class="halo halo-a"></div>
@@ -107,29 +125,30 @@
           <p>ตัวเล่นอยู่ตรงกลาง ทรานสคริปต์และแผนเรียนแยกคนละเมนู และทุกอย่างผูกกับเซสชันจริงเพื่อกลับมาเรียนต่อได้เร็ว.</p>
           <div class="hero-pills">
             <span class="pill live">กลับมาต่อได้</span>
-            <span class="pill">0.75x - 1.5x</span>
+            <span class="pill">1x - 5x</span>
             <span class="pill">ทรานสคริปต์ AI</span>
             <span class="pill">แผนเรียน</span>
           </div>
         </div>
-        <div class="theme-art" aria-hidden="true"></div>
-        <div class="hero-card">
-          <div class="preview-box" id="studentPreviewBanner" style="display:none;margin-bottom:12px;">
+        <div class="hero-side">
+          <div class="hero-summaries">
+            <article class="summary-card">
+              <span class="label">บทเรียนสัปดาห์นี้</span>
+              <strong id="studentLessonsWeek">--</strong>
+              <small>ติดตามความคืบหน้าแบบสั้นๆ</small>
+            </article>
+            <article class="summary-card">
+              <span class="label">เหลือก่อนสอบ</span>
+              <strong id="studentDaysLeft">--</strong>
+              <small>เห็นสถานะการเรียนชัดในบรรทัดเดียว</small>
+            </article>
+          </div>
+          <div class="preview-box compact" id="studentPreviewBanner" style="display:none;">
             <span class="label">โหมดพรีวิว</span>
             <strong>เปิดมาจากตัวสร้างคอร์ส</strong>
             <small id="studentPreviewCourseLabel">นี่คือพรีวิวของโครงคอร์ส ไม่ใช่เซสชันจริง</small>
           </div>
-          <div class="hero-stats">
-            <article>
-              <strong id="studentLessonsWeek">--</strong>
-              <span>บทเรียนสัปดาห์นี้</span>
-            </article>
-            <article>
-              <strong id="studentDaysLeft">--</strong>
-              <span>เหลือก่อนสอบ</span>
-            </article>
-          </div>
-          <div class="preview-box big">
+          <div class="preview-box">
             <span class="label">บทเรียนปัจจุบัน</span>
             <strong id="studentLessonTitle">--</strong>
             <small id="studentVideoNote">กำลังโหลดบทเรียน...</small>
@@ -146,13 +165,17 @@
           <div class="player-top">
             <div class="lesson-path">Chemistry / Atom / Orbital</div>
             <div class="player-meta">
-              <button class="meta-chip" data-speed="0.75" type="button">0.75x</button>
               <button class="meta-chip active" data-speed="1" type="button">1.0x</button>
               <button class="meta-chip" data-speed="1.25" type="button">1.25x</button>
               <button class="meta-chip" data-speed="1.5" type="button">1.5x</button>
+              <button class="meta-chip" data-speed="2" type="button">2x</button>
+              <button class="meta-chip" data-speed="3" type="button">3x</button>
+              <button class="meta-chip" data-speed="4" type="button">4x</button>
+              <button class="meta-chip" data-speed="5" type="button">5x</button>
             </div>
           </div>
           <div class="video-stage">
+            <video id="studentVideoPlayer" class="video-player" controls playsinline></video>
             <div class="video-overlay">
               <div class="video-badge">กำลังเล่น</div>
               <strong id="studentVideoHeadline">กำลังโหลด...</strong>
@@ -208,24 +231,19 @@
           <h2>ติวเตอร์ AI</h2>
           <span>เฉพาะ KB</span>
         </div>
-        <div class="chat-bubble user">สรุปบทนี้แบบสั้นให้หน่อย</div>
+        <div class="chat-bubble user">สรุปบทนี้ให้สั้นๆ</div>
         <div class="chat-bubble ai" id="studentTutorAnswer">กำลังโหลดเนื้อหาจากคอร์สจริง…</div>
-        <div class="chat-bubble user">ช่วยออกโจทย์เคมีเพิ่ม 3 ข้อ</div>
-        <div class="chat-bubble ai" id="studentTutorExercise">AI จะใช้ knowledge base ของบัญชีองค์กรนี้เท่านั้น</div>
-      </div>
-      <div class="rail-section">
-        <div class="section-head compact">
-          <h2>รายละเอียดเซสชัน</h2>
-          <span>กลับมาเรียนต่อ</span>
-        </div>
+        <div class="chat-bubble user">ขอโจทย์เพิ่ม 3 ข้อ</div>
+        <div class="chat-bubble ai" id="studentTutorExercise">ใช้ knowledge base ของบัญชีนี้เท่านั้น</div>
         <div class="notes">
-          <p id="studentSessionDetails">ยังไม่มีเซสชัน</p>
+          <p id="studentSessionDetails">ยังไม่มีเซสชันที่บันทึกไว้</p>
         </div>
       </div>
     </aside>
   </main>
 
-  <script src="/app-data.js?v=20260604a"></script>
+  <script src="/app-data.js?v=20260608b"></script>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.18/dist/hls.min.js"></script>
   <script>
     (() => {
       const authScreen = document.getElementById('studentAuthScreen');
@@ -253,6 +271,8 @@
       const emailField = document.getElementById('studentEmail');
       const passwordField = document.getElementById('studentPassword');
       const transcriptList = document.getElementById('studentTranscriptList');
+      const videoPlayer = document.getElementById('studentVideoPlayer');
+      let hlsInstance = null;
       const progressBar = document.querySelector('.bar span');
       const currentTime = document.getElementById('currentTime');
       const fileGrid = document.getElementById('studentFileGrid');
@@ -273,7 +293,7 @@
 
       applyTheme(localStorage.getItem(themeStorageKey) || 'pastel');
 
-      let selectedView = window.CourseChic.getUiView?.('studentView', 'learn') || 'learn';
+      let selectedView = window.CourseChic?.getUiView?.('studentView', 'learn') || 'learn';
 
       const setView = (view) => {
         menuButtons.forEach((button) => button.classList.toggle('active', button.dataset.view === view));
@@ -314,7 +334,13 @@
       };
 
       const setSpeed = (speed) => {
-        speedButtons.forEach((button) => button.classList.toggle('active', button.dataset.speed === speed));
+        const normalized = String(speed || '1');
+        const rate = Math.max(0.5, Math.min(5, Number(normalized) || 1));
+        speedButtons.forEach((button) => button.classList.toggle('active', button.dataset.speed === normalized));
+        if (videoPlayer) {
+          videoPlayer.playbackRate = rate;
+          videoPlayer.defaultPlaybackRate = rate;
+        }
       };
 
       const setAuthNote = (message, kind = '') => {
@@ -341,11 +367,19 @@
         transcriptLines.forEach((item) => item.classList.toggle('active', item === line));
         currentTime.textContent = line.dataset.seek;
         if (progressBar) progressBar.style.width = `${line.dataset.progress}%`;
+        const startMs = Number(line.dataset.startMs || 0);
+        if (videoPlayer && Number.isFinite(startMs)) {
+          try {
+            videoPlayer.currentTime = startMs / 1000;
+          } catch {
+            // ignore seek errors on unloaded media
+          }
+        }
       };
 
       const renderTranscript = (segments) => {
         transcriptList.innerHTML = segments.map((segment, index) => `
-          <button class="line ${index === 0 ? 'active' : ''}" data-seek="${segment.seek}" data-progress="${segment.progress}" type="button">
+          <button class="line ${index === 0 ? 'active' : ''}" data-seek="${segment.seek}" data-progress="${segment.progress}" data-start-ms="${segment.startMs || 0}" type="button">
             <span>${segment.seek}</span>
             <p>${segment.text}</p>
           </button>
@@ -353,6 +387,79 @@
         const transcriptLines = Array.from(transcriptList.querySelectorAll('.line'));
         transcriptLines.forEach((line) => line.addEventListener('click', () => setTranscriptLine(line, transcriptLines)));
         if (transcriptLines[0]) setTranscriptLine(transcriptLines[0], transcriptLines);
+      };
+
+      const destroyHls = () => {
+        if (hlsInstance) {
+          hlsInstance.destroy();
+          hlsInstance = null;
+        }
+      };
+
+      const tryAutoplayStudentVideo = async () => {
+        if (!videoPlayer) return;
+        try {
+          await videoPlayer.play();
+        } catch {
+          // ignore autoplay blocks
+        }
+      };
+
+      const attachVideoSource = (video) => {
+        destroyHls();
+        if (!videoPlayer) return;
+        const hlsUrl = video?.hlsUrl || video?.playbackUrl || '';
+        const mp4Url = video?.mp4Url || video?.playbackUrl || '';
+        const posterUrl = video?.posterUrl || '';
+        videoPlayer.poster = posterUrl;
+        videoPlayer.removeAttribute('src');
+        videoPlayer.load?.();
+        if (!hlsUrl) {
+          videoPlayer.src = mp4Url;
+          videoPlayer.addEventListener('loadedmetadata', () => {
+            setSpeed(document.querySelector('[data-speed].active')?.dataset.speed || '1');
+            void tryAutoplayStudentVideo();
+          }, { once: true });
+          return;
+        }
+        const canUseNativeHls = typeof videoPlayer.canPlayType === 'function'
+          && videoPlayer.canPlayType('application/vnd.apple.mpegurl');
+        if (canUseNativeHls) {
+          videoPlayer.src = hlsUrl;
+          videoPlayer.addEventListener('loadedmetadata', () => {
+            setSpeed(document.querySelector('[data-speed].active')?.dataset.speed || '1');
+            void tryAutoplayStudentVideo();
+          }, { once: true });
+          return;
+        }
+        if (window.Hls && window.Hls.isSupported()) {
+          hlsInstance = new window.Hls({
+            enableWorker: true,
+            lowLatencyMode: false,
+          });
+          hlsInstance.loadSource(hlsUrl);
+          hlsInstance.attachMedia(videoPlayer);
+          hlsInstance.on(window.Hls.Events.MANIFEST_PARSED, () => {
+            setSpeed(document.querySelector('[data-speed].active')?.dataset.speed || '1');
+            void tryAutoplayStudentVideo();
+          });
+          hlsInstance.on(window.Hls.Events.ERROR, (_event, data) => {
+            if (data?.fatal) {
+              destroyHls();
+              videoPlayer.src = mp4Url;
+              videoPlayer.addEventListener('loadedmetadata', () => {
+                setSpeed(document.querySelector('[data-speed].active')?.dataset.speed || '1');
+                void tryAutoplayStudentVideo();
+              }, { once: true });
+            }
+          });
+          return;
+        }
+        videoPlayer.src = mp4Url;
+        videoPlayer.addEventListener('loadedmetadata', () => {
+          setSpeed(document.querySelector('[data-speed].active')?.dataset.speed || '1');
+          void tryAutoplayStudentVideo();
+        }, { once: true });
       };
 
       const renderFiles = (files) => {
@@ -373,10 +480,40 @@
         `).join('');
       };
 
+      const flattenTreeNodes = (nodes, prefix = []) => {
+        const items = [];
+        (Array.isArray(nodes) ? nodes : []).forEach((node, index) => {
+          const path = [...prefix, index + 1];
+          const nodeType = String(node.nodeType || (path.length <= 1 ? 'section' : 'lesson')).toLowerCase();
+          const hasVideo = Boolean(node.videoUrl && String(node.videoUrl).includes('/videos/play?mediaId='));
+          items.push({
+            id: String(node.id || path.join('-')),
+            title: node.title || 'Untitled lesson',
+            path: path.join('.'),
+            nodeType,
+            hasVideo,
+            videoUrl: node.videoUrl || '',
+          });
+          if (Array.isArray(node.children) && node.children.length) {
+            items.push(...flattenTreeNodes(node.children, path));
+          }
+        });
+        return items;
+      };
+
       const renderOutline = (nodes) => {
-        outlineTree.innerHTML = nodes.map((node, index) => `
-          <div class="node ${index === 0 ? 'main' : index === nodes.length - 1 ? 'active' : ''}">${node}</div>
-        `).join('');
+        const items = flattenTreeNodes(nodes);
+        outlineTree.innerHTML = items.length ? items.map((node, index) => `
+          <article class="outline-node ${index === 0 ? 'main' : index === items.length - 1 ? 'active' : ''}">
+            <div class="outline-node-head">
+              <span class="outline-node-path">${node.path}</span>
+              <span class="outline-node-badge ${node.nodeType === 'section' ? 'section' : 'lesson'}">${node.nodeType}</span>
+              <span class="outline-node-badge ${node.hasVideo ? 'ready' : 'draft'}">${node.hasVideo ? 'มีวิดีโอ' : 'ยังไม่มีวิดีโอ'}</span>
+            </div>
+            <strong>${node.title}</strong>
+            <small>${node.videoUrl || 'ไม่มี videoUrl'}</small>
+          </article>
+        `).join('') : '<div class="empty-state">ยังไม่มีโครงบทเรียน</div>';
       };
 
       const applyStudentData = async () => {
@@ -408,6 +545,8 @@
         document.getElementById('studentVideoTitle').textContent = data.selectedModuleTitle;
         document.getElementById('studentVideoHeadline').textContent = data.selectedModuleTitle;
         document.getElementById('studentVideoNote').textContent = `${data.selectedCourse.modules.length || 0} บทเรียนในคอร์สนี้`;
+        attachVideoSource(data.video);
+        setSpeed(document.querySelector('[data-speed].active')?.dataset.speed || '1');
         document.getElementById('studentTutorAnswer').textContent = data.aiSummary;
         document.getElementById('studentTutorExercise').textContent = data.aiExercise;
         if (isPreviewMode && studentPreviewCourseLabel) {
@@ -417,10 +556,21 @@
         renderTranscript(data.transcript);
         renderFiles(data.files);
         renderPlanner(data.planner);
-        renderOutline(data.courseMap);
+        renderOutline(data.selectedCourseTree || []);
         if (isPreviewMode) {
           setAuthNote('กำลังดูพรีวิวจากตัวสร้างคอร์ส', 'success');
         }
+      };
+
+      const resolveTenantSlug = () => window.CourseChic.resolveTenantSlug?.() || null;
+
+      const loginDirect = async ({ email, password }) => {
+        const loginResult = await window.CourseChic.login({
+          email,
+          password,
+          tenantSlug: resolveTenantSlug(),
+        });
+        return loginResult?.express || loginResult;
       };
 
       loginForm.addEventListener('submit', async (event) => {
@@ -433,13 +583,15 @@
         setAuthNote('กำลังลงชื่อเข้าใช้ผ่าน Google...');
         authScreen.classList.add('is-loading');
         try {
-          await window.CourseChic.login({
+          await loginDirect({
             email: emailField.value.trim(),
             password: passwordField.value,
           });
+          showApp();
           await applyStudentData();
           setAuthNote('ลงชื่อเข้าใช้ด้วย Google แล้ว', 'success');
         } catch (error) {
+          showApp();
           setAuthNote(error.message, 'error');
         } finally {
           authScreen.classList.remove('is-loading');
@@ -452,13 +604,15 @@
         setAuthNote('กำลังโหลดบัญชีสาธิต...');
         authScreen.classList.add('is-loading');
         try {
-          await window.CourseChic.login({
+          await loginDirect({
             email: 'lungteelek@gmail.com',
             password: 'password123',
           });
+          showApp();
           await applyStudentData();
           setAuthNote('ลงชื่อเข้าใช้ด้วยบัญชีสาธิตแล้ว', 'success');
         } catch (error) {
+          showApp();
           setAuthNote(error.message, 'error');
         } finally {
           authScreen.classList.remove('is-loading');
@@ -467,6 +621,7 @@
       });
 
       logoutButton.addEventListener('click', () => {
+        destroyHls();
         window.CourseChic.logout();
         showAuth();
       });
@@ -485,11 +640,20 @@
 
       menuButtons.forEach((button) => button.addEventListener('click', () => setView(button.dataset.view)));
       speedButtons.forEach((button) => button.addEventListener('click', () => setSpeed(button.dataset.speed)));
+      videoPlayer?.addEventListener('ratechange', () => {
+        const currentRate = String(videoPlayer.playbackRate || 1);
+        const nearest = speedButtons
+          .map((button) => ({ button, delta: Math.abs((Number(button.dataset.speed) || 1) - Number(currentRate)) }))
+          .sort((a, b) => a.delta - b.delta)[0]?.button;
+        if (nearest?.dataset.speed) {
+          speedButtons.forEach((button) => button.classList.toggle('active', button === nearest));
+        }
+      });
       themeButtons.forEach((button) => button.addEventListener('click', () => applyTheme(button.dataset.themeChoice)));
 
       if (isPreviewMode) {
         applyStudentData().catch(() => showAuth());
-      } else if (window.CourseChic.hasSession()) {
+      } else if (window.CourseChic?.hasSession?.()) {
         applyStudentData().catch(() => showAuth());
       } else {
         showAuth();

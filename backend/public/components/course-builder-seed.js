@@ -38,3 +38,11 @@ export function createDemoCourseBuilderState() {
     nodes: [lesson1, lesson2],
   };
 }
+
+export function createBlankCourseBuilderState() {
+  return {
+    courseTitle: 'คอร์สใหม่',
+    courseStatus: 'ฉบับร่างเปล่า',
+    nodes: [],
+  };
+}

@@ -1,0 +1,16 @@
+[Unit]
+Description=MyLMS Media Worker
+After=network.target mylms-backend.service
+
+[Service]
+Type=simple
+User=mylms
+WorkingDirectory=/home/mylms/mylms_project/backend
+Environment=NODE_ENV=production
+EnvironmentFile=/home/mylms/mylms_project/backend/.env
+ExecStart=/usr/bin/node /home/mylms/mylms_project/backend/dist/workers/media-worker.js
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

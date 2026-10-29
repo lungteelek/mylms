@@ -6,6 +6,7 @@ import { Roles } from '../common/decorators/roles.decorator';
 import { RequestContext } from '../common/types/request-context.type';
 import { CoursesService } from './courses.service';
 import { CreateCourseDto } from './dto/create-course.dto';
+import { ReorderCoursesDto } from './dto/reorder-courses.dto';
 import { ReorderTreeDto } from './dto/reorder-tree.dto';
 
 @Controller('courses')
@@ -25,6 +26,18 @@ export class CoursesController {
     return this.coursesService.createCourse(user, body);
   }
 
+  @Patch('reorder')
+  @Roles('owner', 'admin', 'tutor')
+  reorderCourses(@CurrentUser() user: RequestContext, @Body() body: ReorderCoursesDto) {
+    return this.coursesService.reorderCourses(user, body);
+  }
+
+  @Patch(':courseId')
+  @Roles('owner', 'admin', 'tutor')
+  updateCourse(@CurrentUser() user: RequestContext, @Param('courseId') courseId: string, @Body() body: Partial<CreateCourseDto>) {
+    return this.coursesService.updateCourse(user, courseId, body);
+  }
+
   @Get(':courseId/tree')
   @Roles('owner', 'admin', 'tutor', 'student')
   getCourseTree(@CurrentUser() user: RequestContext, @Param('courseId') courseId: string) {
@@ -37,15 +50,21 @@ export class CoursesController {
     return this.coursesService.reorderTree(user, courseId, body);
   }
 
-  @Delete(':courseId/tree')
+  @Delete(':courseId')
   @Roles('owner', 'admin', 'tutor')
-  deleteTree(@CurrentUser() user: RequestContext, @Param('courseId') courseId: string) {
-    return this.coursesService.deleteCourseTree(user, courseId);
+  deleteCourse(@CurrentUser() user: RequestContext, @Param('courseId') courseId: string) {
+    return this.coursesService.deleteCourse(user, courseId);
   }
 
   @Post(':courseId/publish')
   @Roles('owner', 'admin', 'tutor')
   publishCourse(@CurrentUser() user: RequestContext, @Param('courseId') courseId: string) {
     return this.coursesService.publishCourse(user, courseId);
+  }
+
+  @Post(':courseId/unpublish')
+  @Roles('owner', 'admin', 'tutor')
+  unpublishCourse(@CurrentUser() user: RequestContext, @Param('courseId') courseId: string) {
+    return this.coursesService.unpublishCourse(user, courseId);
   }
 }
